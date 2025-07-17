@@ -12,17 +12,17 @@ export const createRestaurant = async (req, res) => {
     const Resto = await restaurant.create(req.body);
 
     res.status(201).json({
-      message: "Restaurant created successfully!",
+      message: "Restaurant Created Successfully!",
+      total: Resto.length,
       data: Resto,
     });
   } catch (error) {
     res.status(500).json({
-      message: "Failed to create restaurant",
+      message: "Failed to Create Restaurant",
       error: error.message,
     });
   }
 };
-
 
 // GetAll Restaurant
 export const getAllRestaurunt = async (req, res) => {
@@ -34,15 +34,14 @@ export const getAllRestaurunt = async (req, res) => {
       TotalData: getResto.length,
       data: getResto,
     });
-  } catch (error) {
+  } catch (err) {
     res
       .status(500)
       .json({ message: "Failed To Fetch Restaurant", error: err.message });
   }
 };
 
-
-// GetById Restaurant
+//Restaurant GetById
 export const RestoFindById = async (req, res) => {
   try {
     const getResto = await restaurant.findById(req.params.id);
@@ -89,7 +88,6 @@ export const updateRestaurant = async (req, res) => {
   }
 };
 
-
 // Delete Restaurant
 export const deleteRestaurant = async (req, res) => {
   try {
@@ -100,12 +98,10 @@ export const deleteRestaurant = async (req, res) => {
         messaage: "Restaurant Not Found",
       });
     }
-
     res.status(200).json({
       messaage: "Restaurant Delete SuccessFully!",
       data: Resto,
     });
-
   } catch (error) {
     res.status(500).json({
       message: "Failed To Delete Restaurant",

@@ -6,37 +6,36 @@ const UserSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-
     Email: {
       type: String,
       required: true,
     },
-
     Password: {
       type: String,
       required: true,
     },
-
     MobileNo: {
       type: Number,
       required: true,
     },
-
     DeliveryAddress: {
       type: String,
       required: true,
     },
-
     gender: {
       type: String,
       enum: ["male", "female", "other"],
       required: true,
     },
-
     DietaryPreferences: {
       type: String,
       enum: ["vegiterian", "nonVegiterian"],
       default: "vegiterian",
+    },
+    role: {
+      type: String,
+      enum: ["admin", "restaurant", "customer"],
+      default: "customer",
     },
   },
   {

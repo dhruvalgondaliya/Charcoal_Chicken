@@ -18,16 +18,17 @@ const foodItemSchema = new mongoose.Schema(
         return !this.hasVariants;
       },
     },
+
     RegularPrice: {
       type: Number,
-      required:true
+      required: true,
     },
+
     variants: {
       type: [variantSchema],
       required: function () {
         return this.hasVariants;
       },
-      default: undefined,
     },
   },
   {

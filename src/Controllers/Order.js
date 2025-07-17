@@ -3,11 +3,12 @@ import mongoose from "mongoose";
 
 // Create Order
 export const OrderCreate = async (req, res) => {
-  const { userId, restaurantId } = req.params;
+  const { userId, restaurantId, menuItemId } = req.params;
 
   try {
     const orderData = {
       userId,
+      menuItemId,
       restaurantId,
       ...req.body,
     };
@@ -140,4 +141,3 @@ export const deleteUserOrder = async (req, res) => {
     });
   }
 };
-

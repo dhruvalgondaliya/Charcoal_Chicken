@@ -7,6 +7,7 @@ import {
   UserRegistration,
   deleteUser,
 } from "../Controllers/User.js";
+import Auth from "../MiddleWare/Auth.js";
 
 export const User_Routes = express.Router();
 
@@ -19,5 +20,5 @@ User_Routes.get("/getAllUser", getAllUser);
 User_Routes.get("/getAllUser/:id", userGetById);
 
 // Edit/Delete Routes
-User_Routes.put("/updateUser/:id", updateUser);
-User_Routes.delete("/delete/:id", deleteUser);
+User_Routes.put("/updateUser/:id", Auth, updateUser);
+User_Routes.delete("/delete/:id", Auth, deleteUser);

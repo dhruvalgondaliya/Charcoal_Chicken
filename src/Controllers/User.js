@@ -12,15 +12,16 @@ export const UserRegistration = async (req, res) => {
     DeliveryAddress,
     gender,
     DietaryPreferences,
+    role,
   } = req.body;
 
+  const existingUser = await User.findOne({ Email: Email });
+
+  if (existingUser) {
+    return res.status(400).json({ message: "User already Registered" });
+  }
+
   try {
-    const existingUser = await User.findOne({ Email: Email });
-
-    if (existingUser) {
-      return res.status(400).json({ message: "User already Registered" });
-    }
-
     const registerUser = await User.create({
       userName,
       Email,
@@ -29,6 +30,7 @@ export const UserRegistration = async (req, res) => {
       DeliveryAddress,
       gender,
       DietaryPreferences,
+      role,
     });
 
     res.status(201).json({
@@ -37,14 +39,9 @@ export const UserRegistration = async (req, res) => {
     });
   } catch (error) {
     console.error("User Registration Error:", error);
-
-    const errorMessages = error.errors
-      ? Object.values(error.errors).map((err) => err.message)
-      : [error.message];
-
     res.status(400).json({
-      message: "User registration failed",
-      errors: errorMessages,
+      message: "Failed to User Registration",
+      err: error.message,
     });
   }
 };
@@ -70,7 +67,7 @@ export const loginUser = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user._id, Email: user.Email },
+      { id: user._id, Email: user.Email, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -85,6 +82,7 @@ export const loginUser = async (req, res) => {
         email: user.Email,
         gender: user.gender,
         dietaryPreferences: user.DietaryPreferences,
+        role:user.role
       },
     });
   } catch (err) {
@@ -94,13 +92,14 @@ export const loginUser = async (req, res) => {
   }
 };
 
-// getAll USer
+// getAll User
 export const getAllUser = async (req, res) => {
   try {
     const getuser = await User.find();
 
     res.status(200).json({
       messages: "All User Fetch SuccessFully",
+      totalUser: getuser.length,
       data: getuser,
     });
   } catch (error) {
@@ -146,17 +145,17 @@ export const userGetById = async (req, res) => {
 // Update User
 export const updateUser = async (req, res) => {
   try {
-    const User = await User.findByIdAndUpdate(req.params.id, req.body, {
+    const user = await User.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
     });
 
-    if (!User) {
+    if (!user) {
       return res.status(404).json({ message: "User Not Found" });
     }
 
-    res.status(200).json({ message: "User Update SuccessFully!", data: User });
-  } catch (error) {
+    res.status(200).json({ message: "User Update SuccessFully!", data: user });
+  } catch (err) {
     res
       .status(500)
       .json({ message: "Failed To Update User", error: err.message });
@@ -166,13 +165,13 @@ export const updateUser = async (req, res) => {
 // Delete User
 export const deleteUser = async (req, res) => {
   try {
-    const User = await User.findByIdAndDelete(req.params.id);
+    const user = await User.findByIdAndDelete(req.params.id);
 
-    if (!User) {
+    if (!user) {
       return res.status(404).json({ message: "User Not Found" });
     }
 
-    res.status(200).json({ message: "User Delete SuccessFully!", data: User });
+    res.status(200).json({ message: "User Delete SuccessFully!", data: user });
   } catch (error) {
     res
       .status(500)

@@ -11,27 +11,36 @@ import {
   getMenuById,
   deleteMenu,
   updateMenu,
-
+  getCategoryById,
 } from "../Controllers/MainFood.js";
-
+import Auth from "../MiddleWare/Auth.js";
 
 export const FoodMenu_Routes = express.Router();
 
 // Create Routes
-FoodMenu_Routes.post("/createMenu", createMenu);
-FoodMenu_Routes.post("/:menuId/categories", CreateCategory);
-FoodMenu_Routes.post("/:menuId/categories/:categoryId/items",addItemToCategory);
+FoodMenu_Routes.post("/createMenu",Auth, createMenu);
+FoodMenu_Routes.post("/categories",Auth, CreateCategory);
+FoodMenu_Routes.post(
+  "/:menuId/categories/:categoryId/items",Auth,
+  addItemToCategory
+);
 
 // Get Routes
 FoodMenu_Routes.get("/getAllMenu", getAllMenus);
 FoodMenu_Routes.get("/:menuId", getMenuById);
-
+FoodMenu_Routes.get("/:menuId/category", getCategoryById);
 
 // Update/Delete Routes
-FoodMenu_Routes.put("/:menuId/", updateMenu);
-FoodMenu_Routes.put("/:menuId/categories/:categoryId", updateCategory);
-FoodMenu_Routes.put("/:menuId/categories/:categoryId/items/:itemId",updateItemInCategory);
+FoodMenu_Routes.put("/:menuId/",Auth, updateMenu);
+FoodMenu_Routes.put("/:menuId/categories/:categoryId",Auth, updateCategory);
+FoodMenu_Routes.put(
+  "/:menuId/categories/:categoryId/items/:itemId",Auth,
+  updateItemInCategory
+);
 
-FoodMenu_Routes.delete("/:menuId", deleteMenu);
-FoodMenu_Routes.delete("/:menuId/categories/:categoryId", deleteCategory);
-FoodMenu_Routes.delete("/:menuId/categories/:categoryId/items/:itemId",deleteItemCategory);
+FoodMenu_Routes.delete("/:menuId",Auth, deleteMenu);
+FoodMenu_Routes.delete("/:menuId/categories/:categoryId",Auth, deleteCategory);
+FoodMenu_Routes.delete(
+  "/:menuId/categories/:categoryId/items/:itemId",Auth,
+  deleteItemCategory
+);

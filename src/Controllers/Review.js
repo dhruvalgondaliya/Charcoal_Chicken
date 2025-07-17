@@ -13,6 +13,12 @@ export const createReview = async (req, res) => {
 
     const review = await ReviewSche.create(reviewData);
 
+    if (!review) {
+      return res.json({
+        message:"Please selecte a valid Restaurant",
+      })
+    }
+
     res.status(201).json({
       message: "Review created successfully",
       data: review,
