@@ -3,14 +3,31 @@ import mongoose from "mongoose";
 
 // Create Order
 export const OrderCreate = async (req, res) => {
-  const { userId, restaurantId, menuItemId } = req.params;
+  const { userId } = req.params;
+  const { restaurantId, items, deliveryAddress } = req.body;
 
   try {
+    // Calculate totalAmount
+    let totalAmount = 0;
+
+    items.map((item) => {
+      let itemTotal = item.price * item.quantity;
+
+      if (item.addOn && Array.isArray(item.addOn)) {
+        item.addOn.map((addon) => {
+          itemTotal += addon.price || 0;
+        });
+      }
+
+      totalAmount += itemTotal;
+    });
+
     const orderData = {
       userId,
-      menuItemId,
       restaurantId,
-      ...req.body,
+      deliveryAddress,
+      items,
+      totalAmount,
     };
 
     const order = await OrderSche.create(orderData);
@@ -21,7 +38,7 @@ export const OrderCreate = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({
-      message: "Failed to Order placed",
+      message: "Failed to place order",
       error: error.message,
     });
   }
@@ -69,6 +86,58 @@ export const getUserByIdOrder = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       messages: "Failed to fetch user orders",
+      error: error.message,
+    });
+  }
+};
+
+// update status in oreder or Payment
+export const updateOrderAndPaymentStatus = async (req, res) => {
+  const { orderId } = req.params;
+  const { orderStatus, paymentStatus } = req.body;
+
+  const validOrderStatuses = [
+    "pending",
+    "confirmed",
+    "preparing",
+    "on the way",
+    "delivered",
+    "cancelled",
+  ];
+
+  const validPaymentStatuses = ["pending", "paid"];
+
+  if (orderStatus && !validOrderStatuses.includes(orderStatus)) {
+    return res.status(400).json({ message: "Invalid order status" });
+  }
+
+  if (paymentStatus && !validPaymentStatuses.includes(paymentStatus)) {
+    return res.status(400).json({ message: "Invalid payment status" });
+  }
+
+  try {
+    const updateFields = {};
+
+    if (orderStatus) updateFields.orderStatus = orderStatus;
+    if (paymentStatus) updateFields.paymentStatus = paymentStatus;
+
+    const updatedOrder = await OrderSche.findByIdAndUpdate(
+      orderId,
+      updateFields,
+      { new: true }
+    );
+
+    if (!updatedOrder) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    res.status(200).json({
+      message: "Order and payment status updated successfully",
+      data: updatedOrder,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to update statuses",
       error: error.message,
     });
   }

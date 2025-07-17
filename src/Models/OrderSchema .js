@@ -21,10 +21,20 @@ const OrderSchema = new mongoose.Schema(
         name: { type: String, required: true },
         quantity: { type: Number, required: true },
         price: { type: Number, required: true },
+        // Small Large
+        variant: {
+          type: String,
+        },
+        addOn: [
+          {
+            name: { type: String },
+            price: { type: Number },
+          },
+        ],
       },
     ],
     totalAmount: { type: Number, required: true },
-    status: {
+    orderStatus: {
       type: String,
       enum: [
         "pending",

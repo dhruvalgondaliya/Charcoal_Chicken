@@ -4,14 +4,19 @@ const menuSchema = new mongoose.Schema(
   {
     title: {
       type: String,
-      default: "Restaurant Menu",
+      required: true,
     },
     categories: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Category",
       },
-    ]
+    ],
+    restaurantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Restaurant",
+      required: true,
+    },
   },
   {
     timestamps: true,

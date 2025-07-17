@@ -1,23 +1,35 @@
+import restaurant from "../Models/Restaurant.js";
 import ReviewSche from "../Models/Review.js";
 
-// create review
 export const createReview = async (req, res) => {
   const { userId, restaurantId } = req.params;
+  const { rating, comment } = req.body;
+
+  if (!rating || !comment) {
+    return res
+      .status(400)
+      .json({ message: "Rating and comment are required." });
+  }
 
   try {
-    const reviewData = {
+    const existingReview = await ReviewSche.findOne({ userId, restaurantId });
+    if (existingReview) {
+      return res.status(400).json({
+        message: "You have already submitted a review for this restaurant.",
+      });
+    }
+
+    const review = await ReviewSche.create({
       userId,
       restaurantId,
-      ...req.body,
-    };
+      rating,
+      comment,
+    });
 
-    const review = await ReviewSche.create(reviewData);
-
-    if (!review) {
-      return res.json({
-        message:"Please selecte a valid Restaurant",
-      })
-    }
+    // review update for Restaurant 
+    await restaurant.findByIdAndUpdate(restaurantId, {
+      $push: { reviews: review._id },
+    });
 
     res.status(201).json({
       message: "Review created successfully",
@@ -126,6 +138,10 @@ export const deleteRestaurantReview = async (req, res) => {
         message: "Review not found for this user and restaurant",
       });
     }
+
+    await restaurant.findByIdAndUpdate(review.restaurantId, {
+      $pull: { reviews: review._id },
+    });
 
     res.status(200).json({
       message: "Review deleted successfully",

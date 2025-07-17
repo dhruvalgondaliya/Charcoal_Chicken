@@ -30,6 +30,12 @@ const RestaurantSchema = new mongoose.Schema(
     logoUrl: { type: String },
     cuisines: [{ type: String, required: true }],
     isApproved: { type: Boolean, default: false },
+    reviews: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Review",
+      },
+    ],
   },
   { timestamps: true, versionKey: false }
 );

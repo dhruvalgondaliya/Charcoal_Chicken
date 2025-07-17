@@ -27,7 +27,7 @@ export const createRestaurant = async (req, res) => {
 // GetAll Restaurant
 export const getAllRestaurunt = async (req, res) => {
   try {
-    const getResto = await restaurant.find();
+    const getResto = await restaurant.find().populate("reviews");
 
     res.status(200).json({
       messaage: "All Restaurant Fetch SuccessFully!",

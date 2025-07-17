@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import variantSchema from "../Models/Variant.js";
+import addOnSchema from "./AddOne.js";
 
 const foodItemSchema = new mongoose.Schema(
   {
@@ -12,16 +13,11 @@ const foodItemSchema = new mongoose.Schema(
       default: false,
     },
 
-    basePrice: {
+    price: {
       type: Number,
       required: function () {
         return !this.hasVariants;
       },
-    },
-
-    RegularPrice: {
-      type: Number,
-      required: true,
     },
 
     variants: {
@@ -30,10 +26,13 @@ const foodItemSchema = new mongoose.Schema(
         return this.hasVariants;
       },
     },
+
+    addOns: {
+      type: [addOnSchema],
+      default: [],
+    },
   },
-  {
-    versionKey: false,
-  }
+  { versionKey: false }
 );
 
 const foodItemSch = mongoose.model("FoodItems", foodItemSchema);

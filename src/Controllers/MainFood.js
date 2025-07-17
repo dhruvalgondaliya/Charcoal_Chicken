@@ -1,19 +1,32 @@
 import CategorySch from "../Models/Category.js";
 import foodItemSch from "../Models/FoodItems.js";
-import Menu from "../models/Menu.js";
+import Menu from "../Models/Menu.js";
 
 // CREATE Menu
 export const createMenu = async (req, res) => {
+  const { restaurantId } = req.params;
+
   try {
-    const menu = await Menu.create(req.body);
+    if (!restaurantId) {
+      return res
+        .status(404)
+        .json({ message: "Please Selecet A Valid Restaurant" });
+    }
+
+    const menu = await Menu.create({
+      restaurantId,
+      ...req.body,
+    });
 
     res.status(201).json({
       message: "Menu created successfully",
-      totalMenu: menu.length,
       data: menu,
     });
   } catch (err) {
-    res.status(500).json({ error: "Failed to create menu", err: err.message });
+    res.status(500).json({
+      error: "Failed to create menu",
+      err: err.message,
+    });
   }
 };
 
@@ -73,14 +86,13 @@ export const addItemToCategory = async (req, res) => {
     const newItem = new foodItemSch(itemData);
     await newItem.save();
 
-    // Add the new item's in category
+    // Add new item's in category
     category.items.push(newItem._id);
 
     await category.save();
 
     res.status(201).json({
       message: "Item created successfully",
-      totalItems: category.length,
       data: category,
     });
   } catch (err) {

@@ -8,7 +8,7 @@ const variantSchema = new mongoose.Schema(
       enum: ["Small", "Medium", "Large"],
       required: false,
     },
-    basePrice: {
+    Price: {
       type: Number,
       required: true,
     },
@@ -16,7 +16,8 @@ const variantSchema = new mongoose.Schema(
   },
   {
     versionKey: false,
-  }
+  },
+  { _id: false }
 );
 
 export default variantSchema;
