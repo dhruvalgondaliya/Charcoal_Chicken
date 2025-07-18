@@ -18,7 +18,6 @@ export const OrderCreate = async (req, res) => {
           itemTotal += addon.price || 0;
         });
       }
-
       totalAmount += itemTotal;
     });
 

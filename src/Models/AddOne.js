@@ -7,9 +7,7 @@ const addOnSchema = new mongoose.Schema(
   },
   {
     versionKey: false,
-  },
-  { _id: false }
+  }
 );
 
 export default addOnSchema;
- 

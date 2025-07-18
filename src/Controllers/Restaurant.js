@@ -9,12 +9,17 @@ export const createRestaurant = async (req, res) => {
       return res.status(400).json({ message: "Restaurant already registered" });
     }
 
-    const Resto = await restaurant.create(req.body);
+    // Handle uploaded image
+    const logoUrl = req.file ? req.file.path : null;
+
+    const newResto = await restaurant.create({
+      ...req.body,
+      logoUrl,
+    });
 
     res.status(201).json({
       message: "Restaurant Created Successfully!",
-      total: Resto.length,
-      data: Resto,
+      data: newResto,
     });
   } catch (error) {
     res.status(500).json({
@@ -69,13 +74,11 @@ export const updateRestaurant = async (req, res) => {
       new: true,
       runValidators: true,
     });
-
     if (!Resto) {
       return res.status(404).json({
         messaage: "Restaurant Not Found",
       });
     }
-
     res.status(200).json({
       messaage: "Restaurant Update SuccessFully!",
       data: Resto,

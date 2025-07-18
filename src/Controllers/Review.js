@@ -26,7 +26,7 @@ export const createReview = async (req, res) => {
       comment,
     });
 
-    // review update for Restaurant 
+    // review update for Restaurant
     await restaurant.findByIdAndUpdate(restaurantId, {
       $push: { reviews: review._id },
     });
@@ -139,6 +139,7 @@ export const deleteRestaurantReview = async (req, res) => {
       });
     }
 
+    // Find Review and update in Restaurant
     await restaurant.findByIdAndUpdate(review.restaurantId, {
       $pull: { reviews: review._id },
     });
