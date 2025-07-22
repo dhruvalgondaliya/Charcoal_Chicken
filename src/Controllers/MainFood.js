@@ -150,9 +150,11 @@ export const getCategoryById = async (req, res) => {
       path: "categories",
       populate: { path: "items" },
     });
+
     if (!category) {
       return res.status(404).json({ messages: "category Not Found" });
     }
+
     res.status(200).json({
       success: true,
       message: "Category Fetch By Id SuccessFully",

@@ -28,23 +28,14 @@ FoodMenu_Routes.post(
 
 // Get Routes
 FoodMenu_Routes.get("/getAllMenu", getAllMenus);
-FoodMenu_Routes.get("/:menuId", getMenuById);
-FoodMenu_Routes.get("/:menuId/category", getCategoryById);
-
+FoodMenu_Routes.get("/:menuId",Auth, getMenuById);
+FoodMenu_Routes.get("/:menuId/category",Auth, getCategoryById);
 
 // Update/Delete Routes
 FoodMenu_Routes.put("/:menuId/", Auth, updateMenu);
 FoodMenu_Routes.put("/:menuId/categories/:categoryId", Auth, updateCategory);
-FoodMenu_Routes.put(
-  "/:menuId/categories/:categoryId/items/:itemId",
-  Auth,
-  updateItemInCategory
-);
+FoodMenu_Routes.put("/:menuId/categories/:categoryId/items/:itemId",Auth,updateItemInCategory);
 
 FoodMenu_Routes.delete("/:menuId", Auth, deleteMenu);
 FoodMenu_Routes.delete("/:menuId/categories/:categoryId", Auth, deleteCategory);
-FoodMenu_Routes.delete(
-  "/:menuId/categories/:categoryId/items/:itemId",
-  Auth,
-  deleteItemCategory
-);
+FoodMenu_Routes.delete("/:menuId/categories/:categoryId/items/:itemId",Auth,deleteItemCategory);

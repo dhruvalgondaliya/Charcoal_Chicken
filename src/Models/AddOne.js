@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const addOnSchema = new mongoose.Schema(
+const addOneSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     price: { type: Number, default: 0 },
@@ -10,4 +10,4 @@ const addOnSchema = new mongoose.Schema(
   }
 );
 
-export default addOnSchema;
+export default addOneSchema;

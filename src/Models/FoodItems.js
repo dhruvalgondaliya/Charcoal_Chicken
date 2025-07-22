@@ -1,12 +1,12 @@
 import mongoose from "mongoose";
 import variantSchema from "../Models/Variant.js";
-import addOnSchema from "./AddOne.js";
+import addOneSchema from "./AddOne.js";
 
 const foodItemSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     description: { type: String, required: true },
-    imageUrl: String,
+    imageUrl: { type: String },
 
     hasVariants: {
       type: Boolean,
@@ -28,7 +28,7 @@ const foodItemSchema = new mongoose.Schema(
     },
 
     addOns: {
-      type: [addOnSchema],
+      type: [addOneSchema],
       default: [],
     },
   },

@@ -25,7 +25,7 @@ const OrderSchema = new mongoose.Schema(
         variant: {
           type: String,
         },
-        addOn: [
+        addOne: [
           {
             name: { type: String },
             price: { type: Number },
@@ -34,24 +34,25 @@ const OrderSchema = new mongoose.Schema(
       },
     ],
     totalAmount: { type: Number, required: true },
+    deliveryAddress: { type: String, required: true },
     orderStatus: {
       type: String,
       enum: [
         "pending",
         "confirmed",
         "preparing",
-        "on the way",
+        "on_the_way",
         "delivered",
         "cancelled",
       ],
       default: "pending",
     },
+
     paymentStatus: {
       type: String,
       enum: ["pending", "paid"],
       default: "pending",
     },
-    deliveryAddress: { type: String, required: true },
   },
   { timestamps: true }
 );
