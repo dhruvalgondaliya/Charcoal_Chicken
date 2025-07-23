@@ -12,12 +12,7 @@ import upload from "../MiddleWare/Multer.js";
 export const Restorant_Routes = express.Router();
 
 // create Routes
-Restorant_Routes.post(
-  "/createRestorant",
-  upload.single(),
-  Auth,
-  createRestaurant
-);
+Restorant_Routes.post("/createRestorant", upload.single("image"), Auth, createRestaurant);
 
 // Get Routes
 Restorant_Routes.get("/getAllRestaurunt", Auth, getAllRestaurunt);

@@ -19,18 +19,16 @@ export const addToCart = async (req, res) => {
 
     // Get Variant Name & price
     const selectedVariant = {
-      name: variant.size,
+      size: variant.size,
       price: variant.Price,
     };
-
-    console.log("testing For SelectedVariant:", selectedVariant);
 
     if (!variant) {
       return res.status(400).json({ message: "Variant not found" });
     }
 
     //extra items get logic
-    const selectedAddOns = (addOns || []).map((addOnId) => {
+    const selectedAddOns = addOns.map((addOnId) => {
       const addOn = menuItem.addOns.find((a) => a._id.toString() === addOnId);
       return addOn ? { name: addOn.name, price: addOn.price } : null;
     });
@@ -85,7 +83,7 @@ export const fetchCartByUserId = async (req, res) => {
     }
 
     res.status(200).json({
-      message: "Cart fetched successfully",
+      message: "Cart Fetched successfully",
       totalCartData: Cart.length,
       data: Cart,
     });

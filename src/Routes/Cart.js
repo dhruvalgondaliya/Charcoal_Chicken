@@ -3,6 +3,7 @@ import {
   addToCart,
   cartDelete,
   fetchCartByUserId,
+
 } from "../Controllers/Cart.js";
 import Auth from "../MiddleWare/Auth.js";
 
@@ -16,4 +17,3 @@ Cart_Routes.get("/fetch/:userId", Auth, fetchCartByUserId);
 
 // Edit/Delete Routes
 Cart_Routes.delete("/delete-cart/:cartId", Auth, cartDelete);
-

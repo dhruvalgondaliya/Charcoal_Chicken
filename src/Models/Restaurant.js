@@ -29,6 +29,7 @@ const RestaurantSchema = new mongoose.Schema(
     },
     logoUrl: {
       type: String,
+      required: true,
     },
     cuisines: [{ type: String, required: true }],
     isApproved: { type: Boolean, default: false },

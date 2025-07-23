@@ -19,8 +19,4 @@ Review_Routes.get("/restorunt/:id", Auth, getReviewsByRestaurant);
 
 // Edit / Delete Routes
 Review_Routes.put("/:userId/restorunt/:restaurantId", Auth, EditReviewByUser);
-Review_Routes.delete(
-  "/:userId/restorunt/:restaurantId",
-  Auth,
-  deleteRestaurantReview
-);
+Review_Routes.delete("/:userId/restorunt/:restaurantId", Auth, deleteRestaurantReview);

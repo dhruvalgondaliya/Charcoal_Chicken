@@ -10,9 +10,9 @@ const CartSchema = new mongoose.Schema(
     items: [
       {
         menuItemId: { type: mongoose.Schema.Types.ObjectId, ref: "FoodItems" },
-        quantity: { type: Number },
+        quantity: { type: Number, default: 1 },
         variant: {
-          name: { type: String },
+          size: { type: String },
           price: { type: Number },
         },
         addOns: {

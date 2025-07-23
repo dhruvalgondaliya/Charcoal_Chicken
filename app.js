@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import morgan from "morgan";
 import cors from "cors";
 import path from "path";
+import helmet from "helmet";
 import { FoodMenu_Routes } from "./src/Routes/Food_menu.js";
 import { Restorant_Routes } from "./src/Routes/Restaurant.js";
 import { User_Routes } from "./src/Routes/User.js";
@@ -21,9 +22,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(morgan("dev"));
+app.use(helmet());
 
 // Static access for uploaded files
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+app.use("/uploads", express.static("uploads"));
 
 // Routes
 app.use("/user", User_Routes);

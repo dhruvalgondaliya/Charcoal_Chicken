@@ -1,12 +1,5 @@
 import express from "express";
-import {
-  getAllUser,
-  loginUser,
-  updateUser,
-  userGetById,
-  UserRegistration,
-  deleteUser,
-} from "../Controllers/User.js";
+import {getAllUser, loginUser, updateUser, userGetById, UserRegistration, deleteUser} from "../Controllers/User.js";
 import Auth from "../MiddleWare/Auth.js";
 
 export const User_Routes = express.Router();

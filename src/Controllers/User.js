@@ -30,7 +30,7 @@ export const UserRegistration = async (req, res) => {
       DeliveryAddress,
       gender,
       DietaryPreferences,
-      role,
+      role: req.body.role || "user",
     });
 
     res.status(201).json({
@@ -82,7 +82,7 @@ export const loginUser = async (req, res) => {
         email: user.Email,
         gender: user.gender,
         dietaryPreferences: user.DietaryPreferences,
-        role:user.role
+        role: user.role,
       },
     });
   } catch (err) {

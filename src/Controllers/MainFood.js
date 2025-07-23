@@ -89,6 +89,8 @@ export const addItemToCategory = async (req, res) => {
     // Add new item's in category
     category.items.push(newItem._id);
 
+    console.log("testing data For newItems", newItem);
+
     await category.save();
 
     res.status(201).json({

@@ -9,12 +9,8 @@ export const createRestaurant = async (req, res) => {
       return res.status(400).json({ message: "Restaurant already registered" });
     }
 
-    // Handle uploaded image
-    const logoUrl = req.file ? req.file.path : null;
-
     const newResto = await restaurant.create({
       ...req.body,
-      logoUrl,
     });
 
     res.status(201).json({
