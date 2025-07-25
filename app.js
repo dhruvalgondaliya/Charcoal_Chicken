@@ -2,7 +2,6 @@ import express from "express";
 import dotenv from "dotenv";
 import morgan from "morgan";
 import cors from "cors";
-import path from "path";
 import helmet from "helmet";
 import { FoodMenu_Routes } from "./src/Routes/Food_menu.js";
 import { Restorant_Routes } from "./src/Routes/Restaurant.js";

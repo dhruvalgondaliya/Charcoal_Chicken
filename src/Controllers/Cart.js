@@ -95,6 +95,97 @@ export const fetchCartByUserId = async (req, res) => {
   }
 };
 
+// Edit Cart
+export const editCartItem = async (req, res) => {
+  const { userId, menuItemId } = req.params;
+  const { variantId, quantity, addOns } = req.body;
+
+  try {
+    const menuItem = await FoodItems.findById(menuItemId);
+    if (!menuItem) {
+      return res.status(404).json({ message: "Menu item not found" });
+    }
+
+    // Find variant
+    const variant = menuItem.variants.find(
+      (v) => v._id.toString() === variantId
+    );
+    if (!variant) {
+      return res.status(400).json({ message: "Variant not found" });
+    }
+
+    const selectedVariant = {
+      size: variant.size,
+      price: variant.Price,
+    };
+
+    // Find addOns
+    const selectedAddOns = Array.isArray(addOns)
+      ? addOns.map((addOnId) => {
+          const addOn = menuItem.addOns.find(
+            (a) => a._id.toString() === addOnId
+          );
+          return addOn ? { name: addOn.name, price: addOn.price } : null;
+        })
+      : [];
+
+    const variantTotal = variant.Price * quantity;
+    const addOnsTotal = selectedAddOns.reduce(
+      (sum, addOn) => sum + (addOn?.price || 0),
+      0
+    );
+    const totalAmount = variantTotal + addOnsTotal;
+
+    // Find existing cart
+    const cart = await CartSche.findOne({ userId });
+
+    console.log("Received userId in params:", req.params.userId);
+
+    if (!cart) {
+      return res.status(404).json({ message: "Cart not found" });
+    }
+
+    // Find item to update
+    const itemIndex = cart.items.findIndex(
+      (item) => item.menuItemId.toString() === menuItemId
+    );
+    if (itemIndex === -1) {
+      return res.status(404).json({ message: "Item not found in cart" });
+    }
+
+    // Update item
+    cart.items[itemIndex] = {
+      menuItemId,
+      quantity,
+      variant: selectedVariant,
+      addOns: selectedAddOns,
+    };
+
+    // Recalculate totalAmount
+    let newTotal = 0;
+    for (let item of cart.items) {
+      const itemTotal =
+        item.variant.price * item.quantity +
+        item.addOns.reduce((sum, a) => sum + (a?.price || 0), 0);
+      newTotal += itemTotal;
+    }
+
+    cart.totalAmount = newTotal;
+
+    await cart.save();
+
+    res.status(200).json({
+      message: "Cart item updated successfully",
+      data: cart,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to update cart item",
+      error: error.message,
+    });
+  }
+};
+
 // Delete Cart
 export const cartDelete = async (req, res) => {
   const { cartId } = req.params;

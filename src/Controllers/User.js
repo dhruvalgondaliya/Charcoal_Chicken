@@ -15,7 +15,7 @@ export const UserRegistration = async (req, res) => {
     role,
   } = req.body;
 
-  const existingUser = await User.findOne({ Email: Email });
+  const existingUser = await User.findOne({ Email: Email});
 
   if (existingUser) {
     return res.status(400).json({ message: "User already Registered" });
@@ -30,7 +30,7 @@ export const UserRegistration = async (req, res) => {
       DeliveryAddress,
       gender,
       DietaryPreferences,
-      role: req.body.role || "user",
+      role: req.body.role || "customer",
     });
 
     res.status(201).json({

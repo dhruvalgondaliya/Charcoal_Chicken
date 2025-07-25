@@ -12,7 +12,6 @@ const RestaurantSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      unique: true,
       required: true,
     },
     password: {
@@ -24,10 +23,6 @@ const RestaurantSchema = new mongoose.Schema(
       required: true,
     },
     address: {
-      type: String,
-      required: true,
-    },
-    logoUrl: {
       type: String,
       required: true,
     },

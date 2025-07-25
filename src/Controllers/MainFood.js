@@ -123,6 +123,29 @@ export const getAllMenus = async (req, res) => {
   }
 };
 
+// get particular Restaurant menu
+export const getMenusByRestaurant = async (req, res) => {
+  const { restaurantId } = req.params;
+
+  try {
+    const menus = await Menu.find({ restaurantId }).populate({
+      path: "categories",
+      populate: { path: "items" },
+    });
+
+    res.status(200).json({
+      message: "Menu fetched successfully",
+      totalMenus: menus.length,
+      data: menus,
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: "Failed to fetch menus for the restaurant",
+      message: err.message,
+    });
+  }
+};
+
 // Get a menu by ID
 export const getMenuById = async (req, res) => {
   try {
@@ -274,6 +297,8 @@ export const updateItemInCategory = async (req, res) => {
 export const deleteMenu = async (req, res) => {
   try {
     const menu = await Menu.findByIdAndDelete(req.params.menuId);
+
+    console.log("============", menu);
 
     if (!menu) return res.status(404).json({ message: "Menu not found" });
 

@@ -1,7 +1,10 @@
 import restaurant from "../Models/Restaurant.js";
+import jwt from "jsonwebtoken";
 
 // Create Restaurant
 export const createRestaurant = async (req, res) => {
+  const { name, ownerName, email, password, phone, address, cuisines } =
+    req.body;
   try {
     const existingResto = await restaurant.findOne({ email: req.body.email });
 
@@ -10,7 +13,13 @@ export const createRestaurant = async (req, res) => {
     }
 
     const newResto = await restaurant.create({
-      ...req.body,
+      name,
+      ownerName,
+      email,
+      password,
+      phone,
+      address,
+      cuisines,
     });
 
     res.status(201).json({
@@ -20,6 +29,47 @@ export const createRestaurant = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: "Failed to Create Restaurant",
+      error: error.message,
+    });
+  }
+};
+
+// login for Restaurant
+export const loginRestaurant = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const resto = await restaurant.findOne({ email: email });
+    console.log("testing for email:", resto);
+
+    if (!resto) {
+      return res.status(404).json({ message: "Restaurant not found" });
+    }
+
+    if (resto.password !== password) {
+      return res.status(401).json({
+        message: "Invalid Email or Password",
+      });
+    }
+
+    const token = jwt.sign(
+      { id: resto._id, role: "restaurant" },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      restaurant: {
+        id: resto._id,
+        name: resto.name,
+        email: resto.email,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Login failed",
       error: error.message,
     });
   }

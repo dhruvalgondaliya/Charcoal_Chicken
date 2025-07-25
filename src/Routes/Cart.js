@@ -2,8 +2,8 @@ import express from "express";
 import {
   addToCart,
   cartDelete,
+  editCartItem,
   fetchCartByUserId,
-
 } from "../Controllers/Cart.js";
 import Auth from "../MiddleWare/Auth.js";
 
@@ -16,4 +16,5 @@ Cart_Routes.post("/createCart/:userId/menu/:menuItemId", Auth, addToCart);
 Cart_Routes.get("/fetch/:userId", Auth, fetchCartByUserId);
 
 // Edit/Delete Routes
+Cart_Routes.put("/update-cart/:userId/:menuItemId", Auth, editCartItem);
 Cart_Routes.delete("/delete-cart/:cartId", Auth, cartDelete);
