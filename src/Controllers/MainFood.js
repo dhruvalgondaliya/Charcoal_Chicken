@@ -37,19 +37,25 @@ export const CreateCategory = async (req, res) => {
 
   try {
     const menu = await Menu.findById(menuId);
-    if (!menu) return res.status(404).json({ message: "Menu not found" });
+    if (!menu) {
+      return res.status(404).json({ message: "Menu not found" });
+    }
+
+    // Get the restaurantId from the menu
+    const restaurantId = menu.restaurantId;
 
     const newCategory = new CategorySch({
       name,
       description,
+      menuId: menu._id,
+      restaurantId: restaurantId,
       items: [],
     });
 
     await newCategory.save();
 
+    // Push to menu
     menu.categories.push(newCategory._id);
-
-    // Save the updated Menu
     await menu.save();
 
     res.status(201).json({
@@ -57,9 +63,10 @@ export const CreateCategory = async (req, res) => {
       data: newCategory,
     });
   } catch (err) {
-    res
-      .status(500)
-      .json({ error: "Failed to create category", err: err.message });
+    res.status(500).json({
+      error: "Failed to create category",
+      message: err.message,
+    });
   }
 };
 
@@ -67,9 +74,8 @@ export const CreateCategory = async (req, res) => {
 export const addItemToCategory = async (req, res) => {
   const { menuId, categoryId } = req.params;
 
-  const itemData = req.body;
-
   try {
+    // Step 1: Validate menu and category
     const menu = await Menu.findById(menuId);
     if (!menu) return res.status(404).json({ message: "Menu not found" });
 
@@ -83,21 +89,27 @@ export const addItemToCategory = async (req, res) => {
     if (!category)
       return res.status(404).json({ message: "Category not found" });
 
+    const itemData = {
+      ...req.body,
+      imageUrl: req.file ? `/uploads/${req.file.filename}` : "",
+    };
+
+    console.log("File uploaded:", req.file);
+    console.log("testing body data", image);
+
+    // Step 3: Create and save the item
     const newItem = new foodItemSch(itemData);
     await newItem.save();
 
-    // Add new item's in category
     category.items.push(newItem._id);
-
-    console.log("testing data For newItems", newItem);
-
     await category.save();
 
     res.status(201).json({
       message: "Item created successfully",
-      data: category,
+      data: newItem,
     });
   } catch (err) {
+    console.error("Error creating item:", err);
     res.status(500).json({ error: "Failed to create item", err: err.message });
   }
 };
@@ -141,6 +153,43 @@ export const getMenusByRestaurant = async (req, res) => {
   } catch (err) {
     res.status(500).json({
       error: "Failed to fetch menus for the restaurant",
+      message: err.message,
+    });
+  }
+};
+
+// get particular Restaurant Category
+export const getRestaurantCategories = async (req, res) => {
+  const { restaurantId } = req.params;
+
+  try {
+    const categories = await CategorySch.find({ restaurantId }).populate(
+      "items"
+    );
+
+    // Find the menu belonging to this restaurant
+    const menu = await Menu.findOne({ restaurantId });
+
+    if (!menu) {
+      return res
+        .status(404)
+        .json({ message: "Menu not found for this restaurant" });
+    }
+
+    // Attach menuId to each category
+    const categoriesWithMenuId = categories.map((cat) => ({
+      ...cat.toObject(),
+      menuId: menu._id,
+    }));
+
+    res.status(200).json({
+      message: "Categories fetched successfully",
+      totalCategories: categories.length,
+      data: categoriesWithMenuId,
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: "Failed to fetch categories for the restaurant",
       message: err.message,
     });
   }
@@ -298,8 +347,6 @@ export const deleteMenu = async (req, res) => {
   try {
     const menu = await Menu.findByIdAndDelete(req.params.menuId);
 
-    console.log("============", menu);
-
     if (!menu) return res.status(404).json({ message: "Menu not found" });
 
     res.status(200).json({ message: "Menu deleted successfully", data: menu });
@@ -320,13 +367,13 @@ export const deleteCategory = async (req, res) => {
       return res.status(404).json({ message: "Menu not found" });
     }
 
-    // Remove the category reference from the menu
+    // Remove category reference from menu
     menu.categories = menu.categories.filter(
       (id) => id.toString() !== categoryId
     );
     await menu.save();
 
-    // Remove the actual Category
+    // Delete the actual category
     await CategorySch.findByIdAndDelete(categoryId);
 
     res.status(200).json({

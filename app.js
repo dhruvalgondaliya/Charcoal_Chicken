@@ -24,7 +24,7 @@ app.use(morgan("dev"));
 app.use(helmet());
 
 // Static access for uploaded files
-app.use("/uploads", express.static("uploads"));
+// app.use("/uploads", express.static("uploads"));
 
 // Routes
 app.use("/user", User_Routes);

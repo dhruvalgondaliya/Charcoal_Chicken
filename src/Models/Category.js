@@ -10,9 +10,14 @@ const categorySchema = new mongoose.Schema(
         ref: "FoodItems",
       },
     ],
+    restaurantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Restaurant",
+    },
   },
   {
     versionKey: false,
+    timestamps: true,
   }
 );
 

@@ -6,8 +6,8 @@ const foodItemSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     description: { type: String, required: true },
-    imageUrl: { type: String },
-
+    imageUrl: String ,
+    
     hasVariants: {
       type: Boolean,
       default: false,
