@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import morgan from "morgan";
 import cors from "cors";
+import path from "path";
 import helmet from "helmet";
 import { FoodMenu_Routes } from "./src/Routes/Food_menu.js";
 import { Restorant_Routes } from "./src/Routes/Restaurant.js";
@@ -10,21 +11,34 @@ import { Order_Routes } from "./src/Routes/Order.js";
 import { Review_Routes } from "./src/Routes/Review.js";
 import connectDB from "./src/Config/Server.js";
 import { Cart_Routes } from "./src/Routes/Cart.js";
+import { fileURLToPath } from "url";
 
 // Env Confing
 dotenv.config();
+
 // Server Connected
 connectDB();
 
 const app = express();
 
-app.use(cors());
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(morgan("dev"));
 app.use(helmet());
 
 // Static access for uploaded files
-app.use("/uploads", express.static("src/uploads"));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Static access for uploaded files
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "src/uploads"), {
+    setHeaders: (res) => {
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    },
+  })
+);
 
 // Routes
 app.use("/user", User_Routes);

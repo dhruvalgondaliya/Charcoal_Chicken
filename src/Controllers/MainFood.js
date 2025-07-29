@@ -1,6 +1,7 @@
 import CategorySch from "../Models/Category.js";
 import foodItemSch from "../Models/FoodItems.js";
 import Menu from "../Models/Menu.js";
+import mongoose from "mongoose";
 
 // CREATE Menu
 export const createMenu = async (req, res) => {
@@ -92,6 +93,8 @@ export const addItemToCategory = async (req, res) => {
     const itemData = {
       ...req.body,
       imageUrl: req.file ? `/uploads/${req.file.filename}` : "",
+      restaurantId: menu.restaurantId,
+      categoryId: categoryId,
     };
 
     // Create and save the item
@@ -189,6 +192,29 @@ export const getRestaurantCategories = async (req, res) => {
       error: "Failed to fetch categories for the restaurant",
       message: err.message,
     });
+  }
+};
+
+// get particular Restaurant Items
+export const getItemsByRestaurant = async (req, res) => {
+  const { restaurantId } = req.params;
+
+  try {
+    const items = await foodItemSch.find({ restaurantId });
+
+    if (!items || items.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No items found for this restaurant" });
+    }
+
+    res.status(200).json({
+      message: "Restaurant Items fetched successfully",
+      data: items,
+    });
+  } catch (err) {
+    console.error("Error fetching items:", err);
+    res.status(500).json({ error: "Failed to fetch items", err: err.message });
   }
 };
 
@@ -387,44 +413,28 @@ export const deleteCategory = async (req, res) => {
 
 // DELETE Category Item
 export const deleteItemCategory = async (req, res) => {
-  const { menuId, categoryId, itemId } = req.params;
+  const { categoryId, itemId } = req.params;
 
   try {
-    const menu = await Menu.findById(menuId);
-    if (!menu) {
-      return res.status(404).json({ message: "Menu not found" });
-    }
-
-    const categoryLinked = menu.categories.some(
-      (catId) => catId.toString() === categoryId
-    );
-
-    if (!categoryLinked) {
-      return res
-        .status(400)
-        .json({ message: "Category does not belong to the menu" });
-    }
-
     const category = await CategorySch.findById(categoryId);
     if (!category) {
-      return res.status(404).json({ message: messages.category.notFound });
+      return res.status(404).json({ message: "Category not found" });
     }
 
-    const itemLinked = category.items.some((id) => id.toString() === itemId);
-
-    if (!itemLinked) {
+    const deletedItem = await foodItemSch.findByIdAndDelete(itemId);
+    if (!deletedItem) {
       return res.status(404).json({ message: "Item not found" });
     }
 
-    category.items.pull(itemId);
-
+    // Remove the item from category.items if present
+    category.items.pull(new mongoose.Types.ObjectId(itemId));
     await category.save();
 
     res.status(200).json({
       message: "Item deleted successfully",
-      data: category,
     });
   } catch (err) {
+    console.error("Error deleting item from category:", err);
     res.status(500).json({
       message: "Failed to delete item",
       error: err.message,
