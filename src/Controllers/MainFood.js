@@ -75,7 +75,7 @@ export const addItemToCategory = async (req, res) => {
   const { menuId, categoryId } = req.params;
 
   try {
-    // Step 1: Validate menu and category
+    // Validate menu and category
     const menu = await Menu.findById(menuId);
     if (!menu) return res.status(404).json({ message: "Menu not found" });
 
@@ -94,10 +94,7 @@ export const addItemToCategory = async (req, res) => {
       imageUrl: req.file ? `/uploads/${req.file.filename}` : "",
     };
 
-    console.log("File uploaded:", req.file);
-    console.log("testing body data", image);
-
-    // Step 3: Create and save the item
+    // Create and save the item
     const newItem = new foodItemSch(itemData);
     await newItem.save();
 

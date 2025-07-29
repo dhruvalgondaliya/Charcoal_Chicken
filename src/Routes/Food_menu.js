@@ -27,7 +27,7 @@ FoodMenu_Routes.post("/:menuId/categories", Auth, CreateCategory);
 FoodMenu_Routes.post(
   "/:menuId/categories/:categoryId/items",
   Auth,
-  upload.single("image"),
+  upload.single("imageUrl"),
   addItemToCategory
 );
 
