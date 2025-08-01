@@ -90,9 +90,15 @@ export const addItemToCategory = async (req, res) => {
     if (!category)
       return res.status(404).json({ message: "Category not found" });
 
+    if (!req.file) {
+      return res.status(400).json({ message: "Image file is required" });
+    }
+
+    const imageUrl = `/uploads/${req.file.filename}`;
+
     const itemData = {
       ...req.body,
-      imageUrl: req.file ? `/uploads/${req.file.filename}` : "",
+      imageUrl,
       restaurantId: menu.restaurantId,
       categoryId: categoryId,
     };
@@ -319,7 +325,6 @@ export const updateCategory = async (req, res) => {
 // update ItemCtegory
 export const updateItemInCategory = async (req, res) => {
   const { menuId, categoryId, itemId } = req.params;
-  const updates = req.body;
 
   try {
     const menu = await Menu.findById(menuId);
@@ -328,7 +333,6 @@ export const updateItemInCategory = async (req, res) => {
     const hasCategory = menu.categories.some(
       (catId) => catId.toString() === categoryId
     );
-
     if (!hasCategory)
       return res
         .status(404)
@@ -338,20 +342,50 @@ export const updateItemInCategory = async (req, res) => {
     if (!category)
       return res.status(404).json({ message: "Category not found" });
 
-    // Check if item exists in category.items
-    const hasItem = category.items.some((item) => item.toString() === itemId);
-
+    const hasItem = category.items.some((id) => id.toString() === itemId);
     if (!hasItem)
       return res
         .status(404)
         .json({ message: "Item not found in this category" });
 
-    const updatedItem = await foodItemSch.findByIdAndUpdate(itemId, updates, {
-      new: true,
-    });
+    // Extract and parse values from req.body
+    const { name, description, price, hasVariants, addOns } = req.body;
+
+    const updatedData = {
+      name,
+      description,
+      hasVariants: hasVariants === "true",
+      addOns: addOns === "true",
+    };
+
+    if (updatedData.hasVariants) {
+      const parsedVariants = [];
+      let i = 0;
+      while (req.body[`variants[${i}][size]`]) {
+        parsedVariants.push({
+          size: req.body[`variants[${i}][size]`],
+          price: parseFloat(req.body[`variants[${i}][price]`] || "0"),
+        });
+        i++;
+      }
+      updatedData.variants = parsedVariants;
+    } else {
+      updatedData.price = parseFloat(price || "0");
+    }
+
+    // If new image is uploaded
+    if (req.file) {
+      updatedData.imageUrl = `/uploads/${req.file.filename}`;
+    }
+
+    const updatedItem = await foodItemSch.findByIdAndUpdate(
+      itemId,
+      updatedData,
+      { new: true }
+    );
 
     if (!updatedItem)
-      return res.status(404).json({ message: "Item not found in database" });
+      return res.status(404).json({ message: "Item not found in DB" });
 
     res.status(200).json({
       message: "Item updated successfully",

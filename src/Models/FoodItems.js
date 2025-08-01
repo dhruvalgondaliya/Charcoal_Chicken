@@ -31,10 +31,12 @@ const foodItemSchema = new mongoose.Schema(
       type: [addOneSchema],
       default: [],
     },
+
     restaurantId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Restaurant",
     },
+
     categoryId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",

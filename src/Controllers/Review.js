@@ -89,7 +89,6 @@ export const getReviewsByRestaurant = async (req, res) => {
       totalReview: reviews.length,
       data: reviews,
     });
-    
   } catch (error) {
     res.status(500).json({
       message: "Failed to fetch reviews for Restaurant",

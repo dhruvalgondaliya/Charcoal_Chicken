@@ -12,6 +12,7 @@ import { Review_Routes } from "./src/Routes/Review.js";
 import connectDB from "./src/Config/Server.js";
 import { Cart_Routes } from "./src/Routes/Cart.js";
 import { fileURLToPath } from "url";
+import { UserProfile_Routes } from "./src/Routes/UserProfiles.js";
 
 // Env Confing
 dotenv.config();
@@ -47,6 +48,7 @@ app.use("/restaurunt", Restorant_Routes);
 app.use("/order", Order_Routes);
 app.use("/review", Review_Routes);
 app.use("/cart", Cart_Routes);
+app.use("/userProfile", UserProfile_Routes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
