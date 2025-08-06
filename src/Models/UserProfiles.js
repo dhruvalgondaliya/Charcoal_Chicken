@@ -4,6 +4,7 @@ const userSchema = new mongoose.Schema(
   {
     imageurl: {
       type: String,
+      required: false,
     },
 
     firstName: {
@@ -33,19 +34,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-
-    socialLinks: {
-      facebook: { type: String, default: "" },
-      twitter: { type: String, default: "" },
-      linkedin: { type: String, default: "" },
-      instagram: { type: String, default: "" },
+    country: { type: String, required: true },
+    city: {
+      type: String,
+      required: true,
     },
-
-    address: {
-      country: { type: String, required: true },
-      city: { type: String, required: true },
-      postalCode: { type: String, required: true },
-      taxId: { type: String, required: true },
+    postalCode: {
+      type: String,
+      required: true,
     },
 
     restaurantId: {

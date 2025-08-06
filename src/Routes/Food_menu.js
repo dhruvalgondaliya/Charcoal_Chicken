@@ -31,7 +31,7 @@ FoodMenu_Routes.get("/getAllMenu", getAllMenus);
 FoodMenu_Routes.get("/:menuId", Auth, getMenuById);
 FoodMenu_Routes.get("/:menuId/category", Auth, getCategoryById);
 FoodMenu_Routes.get("/restaurant/:restaurantId/menus",Auth, getMenusByRestaurant); // get particular Restaurant menu fetch
-FoodMenu_Routes.get("/restaurants/:restaurantId/categories",Auth ,getRestaurantCategories); // get particular Restaurant Category Fetch fetch
+FoodMenu_Routes.get("/restaurants/:restaurantId/categories",Auth, getRestaurantCategories); // get particular Restaurant Category Fetch fetch
 FoodMenu_Routes.get("/restaurants/:restaurantId/items",Auth, getItemsByRestaurant); // get particular Restaurant Items fetch
 
 // Update/Delete Routes

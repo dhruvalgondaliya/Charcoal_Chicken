@@ -10,23 +10,40 @@ export const createMenu = async (req, res) => {
   try {
     if (!restaurantId) {
       return res
-        .status(404)
-        .json({ message: "Please Selecet A Valid Restaurant" });
+        .status(400)
+        .json({ message: "Please select a valid restaurant" });
+    }
+
+    const { title, description } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({ message: "Menu title is required" });
+    }
+
+    // Optional: check for duplicate menu name in the same restaurant
+    const existingMenu = await Menu.findOne({
+      restaurantId,
+      title: { $regex: new RegExp(`^${title.trim()}$`, "i") }, // case-insensitive
+    });
+
+    if (existingMenu) {
+      return res.status(400).json({ message: "Menu name already exists" });
     }
 
     const menu = await Menu.create({
       restaurantId,
-      ...req.body,
+      title: title.trim(),
+      description,
     });
 
     res.status(201).json({
-      message: "Menu created successfully",
+      message: "Menu created successFully",
       data: menu,
     });
   } catch (err) {
     res.status(500).json({
       error: "Failed to create menu",
-      err: err.message,
+      message: err.message,
     });
   }
 };
@@ -34,7 +51,7 @@ export const createMenu = async (req, res) => {
 // Create Category
 export const CreateCategory = async (req, res) => {
   const { menuId } = req.params;
-  const { name, description } = req.body;
+  let { name, description } = req.body;
 
   try {
     const menu = await Menu.findById(menuId);
@@ -42,20 +59,32 @@ export const CreateCategory = async (req, res) => {
       return res.status(404).json({ message: "Menu not found" });
     }
 
-    // Get the restaurantId from the menu
-    const restaurantId = menu.restaurantId;
+    // Normalize name
+    name = name.trim().toLowerCase();
+
+    // Check if a category with the same name exists under the same restaurant
+    const existingCategory = await CategorySch.findOne({
+      restaurantId: menu.restaurantId,
+      name: { $regex: new RegExp(`^${name}$`, "i") }, // case-insensitive exact match
+    });
+
+    if (existingCategory) {
+      return res.status(400).json({
+        message: "Category name already exists",
+      });
+    }
 
     const newCategory = new CategorySch({
       name,
       description,
       menuId: menu._id,
-      restaurantId: restaurantId,
+      restaurantId: menu.restaurantId,
       items: [],
     });
 
     await newCategory.save();
 
-    // Push to menu
+    // Add to menu's categories
     menu.categories.push(newCategory._id);
     await menu.save();
 
@@ -144,16 +173,34 @@ export const getAllMenus = async (req, res) => {
 // get particular Restaurant menu
 export const getMenusByRestaurant = async (req, res) => {
   const { restaurantId } = req.params;
+  const { search = "", page = 1, limit = 10 } = req.query;
 
   try {
-    const menus = await Menu.find({ restaurantId }).populate({
-      path: "categories",
-      populate: { path: "items" },
-    });
+    const query = {
+      restaurantId: new mongoose.Types.ObjectId(restaurantId),
+    };
+
+    if (search) {
+      query.title = { $regex: search, $options: "i" };
+    }
+
+    const totalMenus = await Menu.countDocuments(query);
+    const totalPages = Math.ceil(totalMenus / limit);
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const menus = await Menu.find(query)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate({
+        path: "categories",
+        populate: { path: "items" },
+      });
 
     res.status(200).json({
-      message: "Menu fetched successfully",
-      totalMenus: menus.length,
+      message: "Menus fetched successfully",
+      totalMenus,
+      currentPage: parseInt(page),
+      totalPages,
       data: menus,
     });
   } catch (err) {

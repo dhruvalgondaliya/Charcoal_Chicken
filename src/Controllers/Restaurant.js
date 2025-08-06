@@ -3,8 +3,7 @@ import jwt from "jsonwebtoken";
 
 // Create Restaurant
 export const createRestaurant = async (req, res) => {
-  const { name, ownerName, email, password, phone, address, cuisines } =
-    req.body;
+  const { name, ownerName, email, password, phone, address, cuisines } = req.body;
   try {
     const existingResto = await restaurant.findOne({ email: req.body.email });
 
