@@ -2,64 +2,105 @@ import CartSche from "../Models/Cart.js";
 import FoodItems from "../Models/FoodItems.js";
 
 // Create Cart
+import CartSche from "../Models/Cart.js";
+import FoodItems from "../Models/FoodItems.js";
+
+// Add item to cart
 export const addToCart = async (req, res) => {
   const { userId, menuItemId } = req.params;
+  const { variantId, quantity, addOns } = req.body;
 
   try {
-    const { variantId, quantity, addOns } = req.body;
-
+    // Find the menu item
     const menuItem = await FoodItems.findById(menuItemId);
     if (!menuItem) {
-      return res.status(404).json({ message: "Menu Item not found" });
+      return res.status(404).json({ message: "Menu item not found" });
     }
 
+    // Find the selected variant
     const variant = menuItem.variants.find(
       (v) => v._id.toString() === variantId
     );
+    if (!variant) {
+      return res.status(400).json({ message: "Variant not found" });
+    }
 
-    // Get Variant Name & price
+    // Prepare selected variant
     const selectedVariant = {
       size: variant.size,
       price: variant.Price,
     };
 
-    if (!variant) {
-      return res.status(400).json({ message: "Variant not found" });
-    }
+    // Find selected add-ons (if any)
+    const selectedAddOns = Array.isArray(addOns)
+      ? addOns
+          .map((addOnId) => {
+            const addOn = menuItem.addOns.find(
+              (a) => a._id.toString() === addOnId
+            );
+            return addOn ? { name: addOn.name, price: addOn.price } : null;
+          })
+          .filter((addOn) => addOn !== null)
+      : [];
 
-    //extra items get logic
-    const selectedAddOns = addOns.map((addOnId) => {
-      const addOn = menuItem.addOns.find((a) => a._id.toString() === addOnId);
-      return addOn ? { name: addOn.name, price: addOn.price } : null;
-    });
-
-    // Auto totalAmount
+    // Calculate total for this item
     const variantTotal = variant.Price * quantity;
-    const addOnsTotal = selectedAddOns.reduce(
-      (sum, addOn) => sum + addOn.price,
-      0
-    );
+    const addOnsTotal = selectedAddOns.reduce((sum, a) => sum + a.price, 0);
     const totalAmount = variantTotal + addOnsTotal;
 
-    const cart = await CartSche.create({
-      userId,
-      items: [
-        {
-          menuItemId,
-          quantity,
-          variant: selectedVariant,
-          addOns: selectedAddOns,
-        },
-      ],
-      totalAmount,
+    // Check if cart exists for user
+    let cart = await CartSche.findOne({ userId });
+
+    // If no cart, create new
+    if (!cart) {
+      cart = new CartSche({
+        userId,
+        items: [],
+        totalAmount: 0,
+      });
+    }
+
+    // Check if this item with same variant and addons already exists in cart
+    const existingItemIndex = cart.items.findIndex((item) => {
+      return (
+        item.menuItemId.toString() === menuItemId &&
+        item.variant.size === selectedVariant.size &&
+        JSON.stringify(item.addOns) === JSON.stringify(selectedAddOns)
+      );
     });
 
-    res.status(201).json({
-      message: "Item add to cart successfully",
+    if (existingItemIndex !== -1) {
+      // If item exists, increase quantity and recalculate
+      cart.items[existingItemIndex].quantity += quantity;
+    } else {
+      // If item doesn't exist, push new
+      cart.items.push({
+        menuItemId,
+        quantity,
+        variant: selectedVariant,
+        addOns: selectedAddOns,
+      });
+    }
+
+    // Recalculate total cart amount
+    let newTotal = 0;
+    for (const item of cart.items) {
+      const itemTotal =
+        item.variant.price * item.quantity +
+        item.addOns.reduce((sum, a) => sum + a.price, 0);
+      newTotal += itemTotal;
+    }
+
+    cart.totalAmount = newTotal;
+
+    await cart.save();
+
+    return res.status(201).json({
+      message: "Item added to cart successfully",
       data: cart,
     });
   } catch (err) {
-    res.status(500).json({
+    return res.status(500).json({
       message: "Failed to add to cart",
       error: err.message,
     });

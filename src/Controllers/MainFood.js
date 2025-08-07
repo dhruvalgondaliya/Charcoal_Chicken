@@ -157,16 +157,18 @@ export const getAllMenus = async (req, res) => {
       populate: { path: "items" },
     });
 
+    console.log("testing fetch category", menus[0].categories);
+
     res.status(200).json({
-      message: "All Menu Fetch SuccessFully",
-      TotalData: menus.length,
+      message: "All Menus fetched successfully",
+      totalMenus: menus.length,
       data: menus,
-      category: menus.categories,
     });
   } catch (err) {
-    res
-      .status(500)
-      .json({ error: "Failed to fetch all menus", error: err.message });
+    res.status(500).json({
+      error: "Failed to fetch all menus",
+      errorMessage: err.message,
+    });
   }
 };
 
@@ -214,15 +216,30 @@ export const getMenusByRestaurant = async (req, res) => {
 // get particular Restaurant Category
 export const getRestaurantCategories = async (req, res) => {
   const { restaurantId } = req.params;
+  const { search = "", page = 1, limit = 10 } = req.query;
+
+  const pageNumber = parseInt(page, 10);
+  const limitNumber = parseInt(limit, 10);
+  const skip = (pageNumber - 1) * limitNumber;
 
   try {
-    const categories = await CategorySch.find({ restaurantId }).populate(
-      "items"
-    );
+    // Build query with search and restaurantId
+    const query = {
+      restaurantId,
+      name: { $regex: search, $options: "i" }, // case-insensitive search
+    };
 
-    // Find the menu belonging to this restaurant
+    // Count total matching categories (for frontend pagination)
+    const totalCategories = await CategorySch.countDocuments(query);
+
+    // Fetch paginated + searched categories
+    const categories = await CategorySch.find(query)
+      .populate("items")
+      .skip(skip)
+      .limit(limitNumber);
+
+    // Get the restaurant's menu
     const menu = await Menu.findOne({ restaurantId });
-
     if (!menu) {
       return res
         .status(404)
@@ -237,7 +254,9 @@ export const getRestaurantCategories = async (req, res) => {
 
     res.status(200).json({
       message: "Categories fetched successfully",
-      totalCategories: categories.length,
+      totalCategories,
+      currentPage: pageNumber,
+      totalPages: Math.ceil(totalCategories / limitNumber),
       data: categoriesWithMenuId,
     });
   } catch (err) {
@@ -251,19 +270,33 @@ export const getRestaurantCategories = async (req, res) => {
 // get particular Restaurant Items
 export const getItemsByRestaurant = async (req, res) => {
   const { restaurantId } = req.params;
+  const { search = "", page = 1, limit = 10 } = req.query;
 
   try {
-    const items = await foodItemSch.find({ restaurantId });
+    const query = {
+      restaurantId,
+      $or: [
+        { name: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+      ],
+    };
 
-    if (!items || items.length === 0) {
-      return res
-        .status(404)
-        .json({ message: "No items found for this restaurant" });
-    }
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const itemsPromise = foodItemSch
+      .find(query)
+      .skip(skip)
+      .limit(parseInt(limit));
+    const totalPromise = foodItemSch.countDocuments(query);
+
+    const [items, total] = await Promise.all([itemsPromise, totalPromise]);
 
     res.status(200).json({
-      message: "Restaurant Items fetched successfully",
+      message: "Items fetched successfully",
       data: items,
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(total / limit),
     });
   } catch (err) {
     console.error("Error fetching items:", err);
