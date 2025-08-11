@@ -15,7 +15,7 @@ export const UserRegistration = async (req, res) => {
     role,
   } = req.body;
 
-  const existingUser = await User.findOne({ Email: Email});
+  const existingUser = await User.findOne({ Email: Email });
 
   if (existingUser) {
     return res.status(400).json({ message: "User already Registered" });
@@ -78,7 +78,7 @@ export const loginUser = async (req, res) => {
       token,
       user: {
         id: user._id,
-        name: user.name,
+        name: user.userName,
         email: user.Email,
         gender: user.gender,
         dietaryPreferences: user.DietaryPreferences,

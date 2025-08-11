@@ -1,11 +1,11 @@
 import express from "express";
+import Auth from "../MiddleWare/Auth.js";
 import {
   addToCart,
-  cartDelete,
-  editCartItem,
+  updateCartItem,
   fetchCartByUserId,
+  deleteCartItem,
 } from "../Controllers/Cart.js";
-import Auth from "../MiddleWare/Auth.js";
 
 export const Cart_Routes = express.Router();
 
@@ -16,5 +16,5 @@ Cart_Routes.post("/createCart/:userId/menu/:menuItemId", Auth, addToCart);
 Cart_Routes.get("/fetch/:userId", Auth, fetchCartByUserId);
 
 // Edit/Delete Routes
-Cart_Routes.put("/update-cart/:userId/:menuItemId", Auth, editCartItem);
-Cart_Routes.delete("/delete-cart/:cartId", Auth, cartDelete);
+Cart_Routes.put("/update-cart/:userId/:cartItemId", Auth, updateCartItem);
+Cart_Routes.delete("/delete-cart/:cartId/:menuItemId", Auth, deleteCartItem);
