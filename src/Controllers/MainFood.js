@@ -65,7 +65,7 @@ export const CreateCategory = async (req, res) => {
     // Check if a category with the same name exists under the same restaurant
     const existingCategory = await CategorySch.findOne({
       restaurantId: menu.restaurantId,
-      name: { $regex: new RegExp(`^${name}$`, "i") }, // case-insensitive exact match
+      name: { $regex: new RegExp(`^${name}$`, "i") },
     });
 
     if (existingCategory) {
@@ -226,19 +226,20 @@ export const getRestaurantCategories = async (req, res) => {
     // Build query with search and restaurantId
     const query = {
       restaurantId,
-      name: { $regex: search, $options: "i" }, // case-insensitive search
+      name: { $regex: search, $options: "i" },
     };
 
-    // Count total matching categories (for frontend pagination)
+    // Count total matching categories
     const totalCategories = await CategorySch.countDocuments(query);
 
-    // Fetch paginated + searched categories
+    // Fetch paginated categories
     const categories = await CategorySch.find(query)
+      .populate("menuId", "title") // Only fetch menu's name
       .populate("items")
       .skip(skip)
       .limit(limitNumber);
 
-    // Get the restaurant's menu
+    // Get the menu for the restaurant
     const menu = await Menu.findOne({ restaurantId });
     if (!menu) {
       return res
@@ -246,10 +247,10 @@ export const getRestaurantCategories = async (req, res) => {
         .json({ message: "Menu not found for this restaurant" });
     }
 
-    // Attach menuId to each category
-    const categoriesWithMenuId = categories.map((cat) => ({
+    // Attach menuName to each category
+    const categoriesWithMenuName = categories.map((cat) => ({
       ...cat.toObject(),
-      menuId: menu._id,
+      menuName: menu.name,
     }));
 
     res.status(200).json({
@@ -257,7 +258,7 @@ export const getRestaurantCategories = async (req, res) => {
       totalCategories,
       currentPage: pageNumber,
       totalPages: Math.ceil(totalCategories / limitNumber),
-      data: categoriesWithMenuId,
+      data: categoriesWithMenuName,
     });
   } catch (err) {
     res.status(500).json({
@@ -284,6 +285,7 @@ export const getItemsByRestaurant = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const itemsPromise = foodItemSch
       .find(query)
+      .populate("categoryId", "name")
       .skip(skip)
       .limit(parseInt(limit));
     const totalPromise = foodItemSch.countDocuments(query);

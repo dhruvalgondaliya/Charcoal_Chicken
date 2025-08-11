@@ -12,7 +12,7 @@ const CartItemSchema = new mongoose.Schema({
     min: 1,
   },
   variant: {
-    size: { type: String, required: true },
+    size: { type: String, required: false },
     price: { type: Number, required: true },
   },
   addOns: [
@@ -31,14 +31,16 @@ const CartSchema = new mongoose.Schema(
       required: true,
     },
     items: [CartItemSchema],
-    subTotal: { type: Number, required: true },
     tax: { type: Number, default: 0 },
     deliveryCharge: { type: Number, default: 0 },
     discount: { type: Number, default: 0 },
     couponCode: { type: String, default: null },
-    totalAmount: { type: Number, required: true },
+    totalAmount: { type: Number, required: true, default: 0 },
   },
-  { timestamps: true }
+  {
+    versionKey: false,
+    timestamps: true,
+  }
 );
 
 const CartSche = mongoose.model("Cart", CartSchema);

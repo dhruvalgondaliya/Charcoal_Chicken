@@ -52,6 +52,14 @@ export const addToCart = async (req, res) => {
     // Multiply by quantity
     totalPrice *= quantity;
 
+    // Add 5% tax
+    const taxRate = 0.05;
+    const taxAmount = totalPrice * taxRate;
+    totalPrice += taxAmount;
+
+    // Round to 2 decimal places
+    totalPrice = Math.round(totalPrice * 100) / 100;
+
     // Add to cart
     const cart = await CartSche.findOneAndUpdate(
       { userId },
@@ -63,13 +71,14 @@ export const addToCart = async (req, res) => {
             quantity,
             addOns,
             price: totalPrice,
+            tax: taxAmount,
           },
         },
       },
       { upsert: true, new: true }
     );
 
-    res.status(200).json({ message: "Item added to cart", cart });
+    res.status(200).json({ message: "Item added to cart SuccessFully", cart });
   } catch (error) {
     console.error("Add to cart error:", error);
     res
@@ -83,21 +92,36 @@ export const fetchCartByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const Cart = await CartSche.find({ userId }).populate({
+    const Cart = await CartSche.findOne({ userId }).populate({
       path: "items.menuItemId",
-      select: "name description imageUrl",
+      select: "name description imageUrl price",
     });
 
-    if (!Cart || Cart.length === 0) {
+    if (!Cart || !Cart.items || Cart.items.length === 0) {
       return res.status(404).json({
         message: "No cart items found for the user",
       });
     }
 
+    // Calculate totalAmount (price * quantity) and tax
+    const taxRate = 0.05;
+    const totalAmountBeforeTax = Cart.items.reduce((acc, item) => {
+      const price = item.menuItemId?.price || 0;
+      return acc + (item.quantity || 0) * price;
+    }, 0);
+
+    const taxAmount = totalAmountBeforeTax * taxRate;
+    const totalAmount =
+      Math.round((totalAmountBeforeTax + taxAmount) * 100) / 100;
+
     res.status(200).json({
-      message: "Cart Fetched successfully",
-      totalCartData: Cart.length,
-      data: Cart,
+      message: "Cart fetched successfully",
+      data: {
+        ...Cart.toObject(),
+        totalAmount,
+        totalAmountBeforeTax,
+        taxAmount,
+      },
     });
   } catch (error) {
     res.status(500).json({
@@ -110,75 +134,84 @@ export const fetchCartByUserId = async (req, res) => {
 // Edit Cart
 export const updateCartItem = async (req, res) => {
   const { userId, cartItemId } = req.params;
-  const { quantityChange } = req.body;
+  const { quantity, addOns = [] } = req.body;
 
   try {
-    const cart = await CartSche.findOne({ userId });
-    if (!cart) return res.status(404).json({ message: "Cart not found" });
+    const cart = await CartSche.findOne({ userId }).populate({
+      path: "items.menuItemId",
+      select: "name description imageUrl price variants",
+    });
 
-    const itemIndex = cart.items.findIndex(
-      (item) => item._id.toString() === cartItemId
-    );
-
-    if (itemIndex === -1)
-      return res.status(404).json({ message: "Cart item not found" });
-
-    // Update quantity
-    cart.items[itemIndex].quantity += quantityChange;
-
-    // Remove if quantity <= 0
-    if (cart.items[itemIndex].quantity <= 0) {
-      cart.items.splice(itemIndex, 1);
-    } else {
-      const item = cart.items[itemIndex];
-
-      // Fix: Ensure variant.size is NEVER null or undefined (use "default" if missing)
-      if (!item.variant || !item.variant.size) {
-        item.variant = item.variant || {};
-        item.variant.size = "default";
-      }
-
-      // Recalculate item price
-
-      // Get menu item data to calculate addOns price
-      const menuItem = await FoodItems.findById(item.menuItemId);
-      if (!menuItem) {
-        return res.status(404).json({ message: "Menu item not found" });
-      }
-
-      let addOnsPrice = 0;
-      if (item.addOns && item.addOns.length > 0) {
-        // Match addOns with menuItem addOns to get prices
-        const validAddOns = menuItem.addOns.filter((a) =>
-          item.addOns.includes(a._id.toString())
-        );
-        addOnsPrice = validAddOns.reduce((sum, a) => sum + a.price, 0);
-      }
-
-      // Make sure variant.price is a number
-      const variantPrice =
-        typeof item.variant.price === "number" ? item.variant.price : 0;
-
-      item.price = (variantPrice + addOnsPrice) * item.quantity;
+    if (!cart) {
+      return res.status(404).json({ message: "Cart not found" });
     }
 
-    // Recalculate cart totalAmount and subTotal safely (no NaN)
-    cart.subTotal = cart.items.reduce((sum, item) => {
-      return sum + (typeof item.price === "number" ? item.price : 0);
+    // Find the index of the item in the cart
+    const itemIndex = cart.items.findIndex(
+      (i) => i._id.toString() === cartItemId
+    );
+
+    if (itemIndex === -1) {
+      return res.status(404).json({ message: "Menu item not found in cart" });
+    }
+
+    // If quantity <= 0 → remove the item
+    if (quantity <= 0) {
+      cart.items.splice(itemIndex, 1);
+    } else {
+      // Update quantity and addOns
+      cart.items[itemIndex].quantity = quantity;
+      cart.items[itemIndex].addOns = addOns;
+    }
+
+    // Recalculate totalAmount from scratch (subtotal)
+    const totalAmount = cart.items.reduce((sum, item) => {
+      let price = Number(item.menuItemId?.price) || 0;
+
+      if (item.variant && Array.isArray(item.menuItemId?.variants)) {
+        const variant = item.menuItemId.variants.find(
+          (v) => v._id.toString() === item.variant.toString()
+        );
+        if (variant) {
+          price = Number(variant.price) || 0;
+        }
+      }
+
+      const addOnPrice = Array.isArray(item.addOns)
+        ? item.addOns.reduce(
+            (aSum, addOn) => aSum + (Number(addOn?.price) || 0),
+            0
+          )
+        : 0;
+
+      const qty = Number(item.quantity) || 0;
+
+      return sum + (price + addOnPrice) * qty;
     }, 0);
 
-    cart.totalAmount = cart.subTotal; // Or add taxes/fees here if needed
+    // Calculate tax
+    const taxRate = 0.05;
+    const taxAmount = Math.round(totalAmount * taxRate * 100) / 100;
 
-    // Validate subTotal and totalAmount exist in schema or remove required if not needed
+    // Total with tax
+    const totalWithTax = Math.round((totalAmount + taxAmount) * 100) / 100;
+
+    // Save to cart
+    cart.taxAmount = taxAmount;
+    cart.totalAmount = totalWithTax;
 
     await cart.save();
 
-    res.status(200).json({ message: "Cart updated", cart });
+    res.status(200).json({
+      message: "Cart updated successfully",
+      data: cart,
+    });
   } catch (error) {
-    console.error("Update cart item error:", error);
-    res
-      .status(500)
-      .json({ message: "Failed to update cart", error: error.message });
+    console.error(error);
+    res.status(500).json({
+      message: "Failed to update cart",
+      error: error.message,
+    });
   }
 };
 
@@ -187,39 +220,60 @@ export const deleteCartItem = async (req, res) => {
   const { cartId, menuItemId } = req.params;
 
   try {
-    const cart = await CartSche.findById(cartId);
+    const cart = await CartSche.findById(cartId).populate("items.menuItemId");
     if (!cart) {
       return res.status(404).json({ message: "Cart not found" });
     }
 
-    // Filter out the item(s) with the matching menuItemId
-    const originalItemCount = cart.items.length;
-
-    cart.items = cart.items.filter(
-      (item) => item.menuItemId.toString() !== menuItemId
+    // Remove the item from cart.items
+    const filteredItems = cart.items.filter(
+      (item) => item.menuItemId._id.toString() !== menuItemId
     );
 
-    if (cart.items.length === originalItemCount) {
+    if (filteredItems.length === cart.items.length) {
       return res.status(404).json({ message: "Menu item not found in cart" });
     }
 
-    // Recalculate totalAmount and subTotal after removal
-    cart.subTotal = cart.items.reduce(
-      (sum, item) => sum + (typeof item.price === "number" ? item.price : 0),
-      0
-    );
+    cart.items = filteredItems;
 
-    cart.totalAmount = cart.subTotal;
+    // Calculate subtotal (sum of item price * quantity + addOns)
+    const subTotal = cart.items.reduce((sum, item) => {
+      const price = Number(item.price) || 0;
+      const quantity = Number(item.quantity) || 0;
+      const addOnsTotal = item.addOns
+        ? item.addOns.reduce(
+            (acc, addOn) => acc + (Number(addOn.price) || 0),
+            0
+          )
+        : 0;
+
+      return sum + (price + addOnsTotal) * quantity;
+    }, 0);
+
+    // Calculate tax (5% of subtotal)
+    const taxRate = 0.05;
+    const taxAmount = Math.round(subTotal * taxRate * 100) / 100;
+
+    // Calculate total including tax
+    const totalAmount = Math.round((subTotal + taxAmount) * 100) / 100;
+
+    // Update cart fields
+    cart.subTotal = subTotal;
+    cart.taxAmount = taxAmount;
+    cart.totalAmount = totalAmount;
 
     await cart.save();
 
-    res.status(200).json({
-      message: "Item removed from cart successfully",
+    return res.status(200).json({
+      message: "Item removed and totals updated",
       cart,
+      subTotal,
+      taxAmount,
+      totalAmount,
     });
   } catch (error) {
     console.error("Delete cart item error:", error);
-    res.status(500).json({
+    return res.status(500).json({
       message: "Failed to delete cart item",
       error: error.message,
     });
