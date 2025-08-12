@@ -1,30 +1,31 @@
 import mongoose from "mongoose";
 
+// Cart Item Schema
 const CartItemSchema = new mongoose.Schema({
   menuItemId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "FoodItems",
-    required: true
+    required: true,
   },
   quantity: {
     type: Number,
     required: true,
-    min: 1
+    min: 1,
   },
   variant: {
     size: { type: String, required: false },
     price: { type: Number, required: true },
-    _id: { type: mongoose.Schema.Types.ObjectId, ref: "Variant" }
+    _id: { type: mongoose.Schema.Types.ObjectId, ref: "Variant" },
   },
   addOns: [
     {
-      _id: { type: mongoose.Schema.Types.ObjectId, ref: "AddOn" }, // Reference to AddOn model
-      name: { type: String, required: true }, // Optional: for display purposes
-      price: { type: Number, required: true } // Store price for quick access
-    }
+      _id: { type: mongoose.Schema.Types.ObjectId, ref: "AddOn" },
+      name: { type: String, required: true },
+      price: { type: Number, required: true },
+    },
   ],
-  price: { type: Number, required: true }, // Pre-tax price (base price + add-ons) * quantity
-  tax: { type: Number, required: true } // Tax amount for this item
+  price: { type: Number, required: true },
+  tax: { type: Number, required: true },
 });
 
 const CartSchema = new mongoose.Schema(
@@ -32,19 +33,19 @@ const CartSchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true
+      required: true,
     },
     items: [CartItemSchema],
-    subTotal: { type: Number, default: 0 }, // Total before tax and delivery
-    taxAmount: { type: Number, default: 0 }, // Total tax for all items
+    subTotal: { type: Number, default: 0 },
     deliveryCharge: { type: Number, default: 0 },
-    discount: { type: Number, default: 0 },
-    couponCode: { type: String, default: null },
-    totalAmount: { type: Number, required: true, default: 0 } // Final amount after tax, delivery, and discount
+    taxAmount: { type: Number, required: true },
+    // discount: { type: Number, default: 0 },
+    // couponCode: { type: String, default: null },
+    totalAmount: { type: Number, required: true, default: 0 },
   },
   {
     versionKey: false,
-    timestamps: true
+    timestamps: true,
   }
 );
 

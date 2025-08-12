@@ -12,51 +12,74 @@ const OrderSchema = new mongoose.Schema(
       ref: "Restaurant",
       required: true,
     },
+    cartId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Cart",
+      required: true,
+    },
     items: [
       {
         menuItemId: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "FoodItems",
+          required: true,
         },
-        name: { type: String, required: true },
-        quantity: { type: Number, required: true },
-        price: { type: Number, required: true },
-        // Small Large
+        name: String,
+        quantity: {
+          type: Number,
+          required: true,
+        },
+        price: {
+          type: Number,
+          required: true,
+        },
         variant: {
-          type: String,
+          size: String,
+          price: Number,
         },
-        addOne: [
+        addOns: [
           {
-            name: { type: String },
-            price: { type: Number },
+            name: String,
+            price: Number,
           },
         ],
       },
     ],
-    totalAmount: { type: Number, required: true },
-    deliveryAddress: { type: String, required: true },
+
+    deliveryAddress: {
+      FullName: { type: String, required: true },
+      PhoneNumber: { type: String, required: true },
+      Address: { type: String, required: true },
+      City: { type: String, required: true },
+      ZIPCode: { type: String, required: true },
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "paid", "failed"],
+      default: "pending",
+    },
     orderStatus: {
       type: String,
       enum: [
         "pending",
         "confirmed",
         "preparing",
-        "on_the_way",
+        "out-for-delivery",
         "delivered",
         "cancelled",
       ],
       default: "pending",
     },
-
-    paymentStatus: {
+    paymentMethod: {
       type: String,
-      enum: ["pending", "paid"],
-      default: "pending",
+      enum: ["cod", "card", "Razorpay"],
+      default: "cod",
+      required: true,
     },
   },
   { timestamps: true }
 );
 
-const OrderSche = mongoose.model("Orders", OrderSchema);
+const OrderSche = mongoose.model("Order", OrderSchema);
 
 export default OrderSche;

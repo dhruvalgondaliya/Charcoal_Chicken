@@ -1,35 +1,51 @@
 import OrderSche from "../Models/OrderSchema .js";
+import CartSche from "../Models/Cart.js";
 import mongoose from "mongoose";
 
-// Create Order
-export const OrderCreate = async (req, res) => {
-  const { userId } = req.params;
-  const { restaurantId, items, deliveryAddress } = req.body;
+// create Order Api
+export const createOrder = async (req, res) => {
+  const { userId, cartId } = req.params;
+  const { deliveryAddress, paymentMethod } = req.body;
 
   try {
-    // Calculate totalAmount
-    let totalAmount = 0;
+    const cart = await CartSche.findOne({ _id: cartId, userId }).populate(
+      "items.menuItemId"
+    );
 
-    items.map((item) => {
-      let itemTotal = item.price * item.quantity;
+    if (!cart) {
+      return res.status(404).json({ message: "Cart not found" });
+    }
 
-      if (item.addOn && Array.isArray(item.addOn)) {
-        item.addOn.map((addon) => {
-          itemTotal += addon.price || 0;
-        });
-      }
-      totalAmount += itemTotal;
-    });
+    if (!cart.items.length) {
+      return res.status(400).json({ message: "Cart is empty" });
+    }
 
-    const orderData = {
+    // Assuming all items in the cart are from the same restaurant
+    const restaurantId = cart.items[0]?.menuItemId?.restaurantId;
+    if (!restaurantId) {
+      return res
+        .status(400)
+        .json({ message: "Restaurant ID not found in cart items" });
+    }
+
+    const order = await OrderSche.create({
       userId,
       restaurantId,
+      cartId,
+      items: cart.items,
       deliveryAddress,
-      items,
-      totalAmount,
-    };
+      paymentMethod,
+      paymentStatus: paymentMethod === "cod" ? "pending" : "paid",
 
-    const order = await OrderSche.create(orderData);
+      subTotal: cart.subTotal,
+      taxAmount: cart.taxAmount,
+      deliveryCharge: cart.deliveryCharge,
+      totalAmount: cart.totalAmount,
+    });
+
+    // Clear cart after placing order
+    cart.items = [];
+    await cart.save();
 
     res.status(201).json({
       message: "Order placed successfully",
@@ -55,6 +71,7 @@ export const getAllOrder = async (req, res) => {
       messages: "All Order Fetch SuccessFully!",
       totalOrder: orders.length,
       data: orders,
+      orderId: newOrder._id,
     });
   } catch (error) {
     res.status(500).json({
@@ -66,11 +83,14 @@ export const getAllOrder = async (req, res) => {
 
 // Get UserByIdOrder
 export const getUserByIdOrder = async (req, res) => {
-  try {
-    const orders = await OrderSche.find({ userId: req.params.id })
-      .populate("items.menuItemId", "name description price")
-      .populate("restaurantId", "name address");
+  const { userId } = req.params;
+  console.log("testing userid Fetch:", userId);
 
+  try {
+    const orders = await OrderSche.find({ userId })
+      .populate("items.menuItemId", "name description price")
+      .populate("restaurantId", "name address")
+      .populate("cartId", "");
     if (!orders || orders.length === 0) {
       return res
         .status(404)

@@ -1,11 +1,11 @@
 import CartSche from "../Models/Cart.js";
 import FoodItems from "../Models/FoodItems.js";
 
-// Coupon validation function (hardcoded for now)
+// Coupon validation function
 const validateCoupon = (couponCode) => {
   const coupons = {
-    SAVE10: { type: "percentage", value: 10 }, // 10% discount
-    FREEDelivery: { type: "fixed", value: 30 }, // ₹30 off (e.g., covers delivery charge)
+    SAVE10: { type: "percentage", value: 10 },
+    FREEDelivery: { type: "fixed", value: 30 },
   };
   return coupons[couponCode] || null;
 };
@@ -37,7 +37,7 @@ export const addToCart = async (req, res) => {
       selectedVariant = {
         size: variant.size,
         price: variant.price,
-        _id: variant._id
+        _id: variant._id,
       };
     } else {
       selectedVariant = { size: null, price: menuItem.price, _id: null };
@@ -67,8 +67,12 @@ export const addToCart = async (req, res) => {
       const sameMenuItem = item.menuItemId.toString() === menuItemId;
       const sameVariant = !variantId
         ? !item.variant || !item.variant._id
-        : item.variant && item.variant._id && item.variant._id.toString() === variantId;
-      const sameAddOns = JSON.stringify(item.addOns.map((a) => a._id)) === JSON.stringify(addOns || []);
+        : item.variant &&
+          item.variant._id &&
+          item.variant._id.toString() === variantId;
+      const sameAddOns =
+        JSON.stringify(item.addOns.map((a) => a._id)) ===
+        JSON.stringify(addOns || []);
       return sameMenuItem && sameVariant && sameAddOns;
     });
 
@@ -77,7 +81,8 @@ export const addToCart = async (req, res) => {
       const existingItem = cart.items[existingItemIndex];
       const newQuantity = existingItem.quantity + quantity;
       const newItemPriceBeforeTax = basePrice * newQuantity;
-      const newTaxAmount = Math.round(newItemPriceBeforeTax * taxRate * 100) / 100;
+      const newTaxAmount =
+        Math.round(newItemPriceBeforeTax * taxRate * 100) / 100;
 
       cart.items[existingItemIndex] = {
         ...existingItem,
@@ -91,7 +96,9 @@ export const addToCart = async (req, res) => {
         menuItemId,
         variant: selectedVariant,
         quantity,
-        addOns: addOns ? addOns.map((id) => ({ _id: id, name: "", price: 0 })) : [],
+        addOns: addOns
+          ? addOns.map((id) => ({ _id: id, name: "", price: 0 }))
+          : [],
         price: itemPriceBeforeTax,
         tax: taxAmount,
       });
@@ -102,7 +109,8 @@ export const addToCart = async (req, res) => {
       (sum, item) => sum + (Number(item.price) || 0),
       0
     );
-    const taxAmountTotal = Math.round(totalAmountBeforeTax * taxRate * 100) / 100;
+    const taxAmountTotal =
+      Math.round(totalAmountBeforeTax * taxRate * 100) / 100;
     const deliveryCharge = totalAmountBeforeTax >= 300 ? 0 : 30;
 
     let discount = 0;
@@ -110,11 +118,16 @@ export const addToCart = async (req, res) => {
       const coupon = validateCoupon(cart.couponCode);
       if (coupon) {
         if (coupon.type === "percentage") {
-          discount = Math.round((totalAmountBeforeTax * coupon.value) / 100 * 100) / 100;
+          discount =
+            Math.round(((totalAmountBeforeTax * coupon.value) / 100) * 100) /
+            100;
         } else if (coupon.type === "fixed") {
           discount = coupon.value;
         }
-        discount = Math.min(discount, totalAmountBeforeTax + taxAmountTotal + deliveryCharge);
+        discount = Math.min(
+          discount,
+          totalAmountBeforeTax + taxAmountTotal + deliveryCharge
+        );
       } else {
         cart.couponCode = null; // Invalidate invalid coupon
       }
@@ -143,7 +156,7 @@ export const addToCart = async (req, res) => {
   }
 };
 
-// Fetch Cart By UserId (unchanged)
+// Fetch Cart By UserId
 export const fetchCartByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -151,7 +164,7 @@ export const fetchCartByUserId = async (req, res) => {
     const cart = await CartSche.findOne({ userId })
       .populate({
         path: "items.menuItemId",
-        select: "name description imageUrl price variants addOns"
+        select: "name description imageUrl price variants addOns",
       })
       .populate("items.addOns");
 
@@ -162,9 +175,6 @@ export const fetchCartByUserId = async (req, res) => {
     }
 
     const totalAmountBeforeTax = cart.items.reduce((acc, item) => {
-      console.log(
-        `Item ID: ${item._id}, Price: ${item.price}, Tax: ${item.tax}, Quantity: ${item.quantity}`
-      );
       return acc + (Number(item.price) || 0);
     }, 0);
 
@@ -177,11 +187,16 @@ export const fetchCartByUserId = async (req, res) => {
       const coupon = validateCoupon(cart.couponCode);
       if (coupon) {
         if (coupon.type === "percentage") {
-          discount = Math.round((totalAmountBeforeTax * coupon.value) / 100 * 100) / 100;
+          discount =
+            Math.round(((totalAmountBeforeTax * coupon.value) / 100) * 100) /
+            100;
         } else if (coupon.type === "fixed") {
           discount = coupon.value;
         }
-        discount = Math.min(discount, totalAmountBeforeTax + taxAmount + deliveryCharge);
+        discount = Math.min(
+          discount,
+          totalAmountBeforeTax + taxAmount + deliveryCharge
+        );
       } else {
         cart.couponCode = null;
         await cart.save({ validateModifiedOnly: true });
@@ -190,8 +205,7 @@ export const fetchCartByUserId = async (req, res) => {
 
     const totalAmount =
       Math.round(
-        (totalAmountBeforeTax + taxAmount + deliveryCharge - discount) *
-          100
+        (totalAmountBeforeTax + taxAmount + deliveryCharge - discount) * 100
       ) / 100;
 
     cart.subTotal = totalAmountBeforeTax;
@@ -209,8 +223,8 @@ export const fetchCartByUserId = async (req, res) => {
         totalAmountBeforeTax,
         taxAmount,
         deliveryCharge,
-        discount
-      }
+        discount,
+      },
     });
   } catch (error) {
     console.error("Fetch cart error:", error);
@@ -220,7 +234,7 @@ export const fetchCartByUserId = async (req, res) => {
   }
 };
 
-// Edit Cart (unchanged)
+// Edit Cart
 export const updateCartItem = async (req, res) => {
   const { userId, cartItemId } = req.params;
   const { quantity, addOns = [] } = req.body;
@@ -229,7 +243,7 @@ export const updateCartItem = async (req, res) => {
     const cart = await CartSche.findOne({ userId })
       .populate({
         path: "items.menuItemId",
-        select: "name description imageUrl price variants addOns"
+        select: "name description imageUrl price variants addOns",
       })
       .populate("items.addOns");
 
@@ -272,7 +286,7 @@ export const updateCartItem = async (req, res) => {
       cart.items[itemIndex].addOns = addOns.map((id) => ({
         _id: id,
         name: "",
-        price: 0
+        price: 0,
       }));
       cart.items[itemIndex].price = itemPriceBeforeTax;
       cart.items[itemIndex].tax = taxAmount;
@@ -290,11 +304,16 @@ export const updateCartItem = async (req, res) => {
       const coupon = validateCoupon(cart.couponCode);
       if (coupon) {
         if (coupon.type === "percentage") {
-          discount = Math.round((totalAmountBeforeTax * coupon.value) / 100 * 100) / 100;
+          discount =
+            Math.round(((totalAmountBeforeTax * coupon.value) / 100) * 100) /
+            100;
         } else if (coupon.type === "fixed") {
           discount = coupon.value;
         }
-        discount = Math.min(discount, totalAmountBeforeTax + taxAmount + deliveryCharge);
+        discount = Math.min(
+          discount,
+          totalAmountBeforeTax + taxAmount + deliveryCharge
+        );
       } else {
         cart.couponCode = null;
       }
@@ -302,8 +321,7 @@ export const updateCartItem = async (req, res) => {
 
     const totalAmount =
       Math.round(
-        (totalAmountBeforeTax + taxAmount + deliveryCharge - discount) *
-          100
+        (totalAmountBeforeTax + taxAmount + deliveryCharge - discount) * 100
       ) / 100;
 
     cart.subTotal = totalAmountBeforeTax;
@@ -322,7 +340,7 @@ export const updateCartItem = async (req, res) => {
   }
 };
 
-// Delete Cart (unchanged)
+// Delete Cart
 export const deleteCartItem = async (req, res) => {
   const { cartId, menuItemId } = req.params;
 
@@ -362,11 +380,16 @@ export const deleteCartItem = async (req, res) => {
       const coupon = validateCoupon(updatedCart.couponCode);
       if (coupon) {
         if (coupon.type === "percentage") {
-          discount = Math.round((totalAmountBeforeTax * coupon.value) / 100 * 100) / 100;
+          discount =
+            Math.round(((totalAmountBeforeTax * coupon.value) / 100) * 100) /
+            100;
         } else if (coupon.type === "fixed") {
           discount = coupon.value;
         }
-        discount = Math.min(discount, totalAmountBeforeTax + taxAmount + deliveryCharge);
+        discount = Math.min(
+          discount,
+          totalAmountBeforeTax + taxAmount + deliveryCharge
+        );
       } else {
         updatedCart.couponCode = null;
         await updatedCart.save({ validateModifiedOnly: true });
@@ -375,8 +398,7 @@ export const deleteCartItem = async (req, res) => {
 
     const totalAmount =
       Math.round(
-        (totalAmountBeforeTax + taxAmount + deliveryCharge - discount) *
-          100
+        (totalAmountBeforeTax + taxAmount + deliveryCharge - discount) * 100
       ) / 100;
 
     await CartSche.updateOne(
@@ -387,8 +409,8 @@ export const deleteCartItem = async (req, res) => {
           taxAmount: taxAmount,
           deliveryCharge: deliveryCharge,
           discount: discount,
-          totalAmount: totalAmount
-        }
+          totalAmount: totalAmount,
+        },
       }
     );
 
@@ -399,18 +421,18 @@ export const deleteCartItem = async (req, res) => {
       taxAmount,
       deliveryCharge,
       discount,
-      totalAmount
+      totalAmount,
     });
   } catch (error) {
     console.error("Delete cart item error:", error);
     res.status(500).json({
       message: "Failed to delete cart item",
-      error: error.message
+      error: error.message,
     });
   }
 };
 
-// New endpoint to apply coupon (unchanged)
+// apply coupon
 export const applyCoupon = async (req, res) => {
   const { userId } = req.params;
   const { couponCode } = req.body;
@@ -438,16 +460,19 @@ export const applyCoupon = async (req, res) => {
     const deliveryCharge = totalAmountBeforeTax >= 300 ? 0 : 30;
     let discount = 0;
     if (coupon.type === "percentage") {
-      discount = Math.round((totalAmountBeforeTax * coupon.value) / 100 * 100) / 100;
+      discount =
+        Math.round(((totalAmountBeforeTax * coupon.value) / 100) * 100) / 100;
     } else if (coupon.type === "fixed") {
       discount = coupon.value;
     }
-    discount = Math.min(discount, totalAmountBeforeTax + taxAmount + deliveryCharge);
+    discount = Math.min(
+      discount,
+      totalAmountBeforeTax + taxAmount + deliveryCharge
+    );
 
     const totalAmount =
       Math.round(
-        (totalAmountBeforeTax + taxAmount + deliveryCharge - discount) *
-          100
+        (totalAmountBeforeTax + taxAmount + deliveryCharge - discount) * 100
       ) / 100;
 
     cart.discount = discount;
@@ -462,8 +487,8 @@ export const applyCoupon = async (req, res) => {
         totalAmountBeforeTax,
         taxAmount,
         deliveryCharge,
-        discount
-      }
+        discount,
+      },
     });
   } catch (error) {
     console.error("Apply coupon error:", error);

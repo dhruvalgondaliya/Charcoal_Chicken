@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import addOneSchema from "../Models/AddOne.js";
+// import addOneSchema from "../Models/AddOne.js";
 
 const variantSchema = new mongoose.Schema(
   {
@@ -12,7 +12,7 @@ const variantSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
-    addOns: [addOneSchema],
+    // addOns: [addOneSchema],
   },
   {
     versionKey: false,
