@@ -38,9 +38,9 @@ const CartSchema = new mongoose.Schema(
     items: [CartItemSchema],
     subTotal: { type: Number, default: 0 },
     deliveryCharge: { type: Number, default: 0 },
-    taxAmount: { type: Number, required: true },
-    // discount: { type: Number, default: 0 },
-    // couponCode: { type: String, default: null },
+    taxAmount: { type: Number, required: true, default: 0 },
+    discount: { type: Number, default: 0 },
+    couponCode: { type: String, default: null },
     totalAmount: { type: Number, required: true, default: 0 },
   },
   {

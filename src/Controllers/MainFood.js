@@ -23,7 +23,7 @@ export const createMenu = async (req, res) => {
     // Optional: check for duplicate menu name in the same restaurant
     const existingMenu = await Menu.findOne({
       restaurantId,
-      title: { $regex: new RegExp(`^${title.trim()}$`, "i") }, // case-insensitive
+      title: { $regex: new RegExp(`^${title.trim()}$`, "i") },
     });
 
     if (existingMenu) {

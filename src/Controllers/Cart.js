@@ -16,7 +16,8 @@ export const addToCart = async (req, res) => {
   const { variantId, quantity, addOns } = req.body;
 
   try {
-    const menuItem = await FoodItems.findById(menuItemId);
+    const menuItem = await FoodItems.findOne({ _id: menuItemId });
+
     if (!menuItem) {
       return res.status(404).json({ message: "Menu item not found" });
     }
@@ -150,9 +151,11 @@ export const addToCart = async (req, res) => {
     res.status(200).json({ message: "Item added to cart successfully", cart });
   } catch (error) {
     console.error("Add to cart error:", error);
-    res
-      .status(500)
-      .json({ message: "Failed to add to cart", error: error.message });
+
+    res.status(500).json({
+      message: "Failed to add to cart",
+      error: error.message || error.toString() || "Unknown error",
+    });
   }
 };
 

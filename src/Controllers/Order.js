@@ -110,13 +110,83 @@ export const getUserByIdOrder = async (req, res) => {
   }
 };
 
+// Get restoruntBy order
+export const getRestaurantOrders = async (req, res) => {
+  const { restaurantId } = req.params;
+  const {
+    page = 1,
+    limit = 10,
+    search = "",
+    orderStatus,
+    paymentStatus,
+    startDate,
+    endDate,
+  } = req.query;
+
+  try {
+    const query = { restaurantId };
+
+    // Search in customer name or order ID
+    if (typeof search === "string" && search.trim() !== "") {
+      query.$or = [
+        { FullName: { $regex: search, $options: "i" } },
+        mongoose.Types.ObjectId.isValid(search)
+          ? { _id: mongoose.Types.ObjectId(search) }
+          : {},
+      ];
+    }
+
+    // Filter by order status
+    if (orderStatus) {
+      query.orderStatus = orderStatus;
+    }
+
+    // Filter by payment status
+    if (paymentStatus) {
+      query.paymentStatus = paymentStatus;
+    }
+
+    // Filter by date range
+    if (startDate && !isNaN(Date.parse(startDate))) {
+      query.createdAt = { ...query.createdAt, $gte: new Date(startDate) };
+    }
+    if (endDate && !isNaN(Date.parse(endDate))) {
+      query.createdAt = { ...query.createdAt, $lte: new Date(endDate) };
+    }
+
+    const skip = (page - 1) * limit;
+
+    const orders = await OrderSche.find(query)
+      .populate("items.menuItemId", "name description price")
+      .populate("restaurantId", "name address")
+      .populate("cartId")
+      .skip(skip)
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 });
+
+    const total = await OrderSche.countDocuments(query);
+
+    res.status(200).json({
+      message: "Orders fetched successfully",
+      total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: Number(page),
+      data: orders,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to fetch orders",
+      error: error.message,
+    });
+  }
+};
+
 // update status in oreder or Payment
 export const updateOrderAndPaymentStatus = async (req, res) => {
   const { orderId } = req.params;
   const { orderStatus, paymentStatus } = req.body;
 
   const validOrderStatuses = [
-    "pending",
     "confirmed",
     "preparing",
     "on the way",
