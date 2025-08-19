@@ -130,7 +130,7 @@ export const addToCart = async (req, res) => {
           totalAmountBeforeTax + taxAmountTotal + deliveryCharge
         );
       } else {
-        cart.couponCode = null; // Invalidate invalid coupon
+        cart.couponCode = null;
       }
     }
 

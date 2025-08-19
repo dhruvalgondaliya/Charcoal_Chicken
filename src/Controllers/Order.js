@@ -1,4 +1,4 @@
-import OrderSche from "../Models/OrderSchema .js";
+import OrderSche from "../Models/OrderSch.js";
 import CartSche from "../Models/Cart.js";
 import mongoose from "mongoose";
 
@@ -84,31 +84,76 @@ export const getAllOrder = async (req, res) => {
 // Get UserByIdOrder
 export const getUserByIdOrder = async (req, res) => {
   const { userId } = req.params;
-  console.log("testing userid Fetch:", userId);
 
   try {
     const orders = await OrderSche.find({ userId })
       .populate("items.menuItemId", "name description price")
       .populate("restaurantId", "name address")
       .populate("cartId", "");
+
     if (!orders || orders.length === 0) {
       return res
         .status(404)
-        .json({ messages: "No Orders Found for this User" });
+        .json({ message: "No Orders Found for this User" });
     }
 
+    // Format response
+    const formattedOrders = orders.map((order) => {
+      // Calculate total if missing
+      const calculatedTotal =
+        order.items?.reduce((sum, i) => {
+          const price = i.menuItemId?.price || 0;
+          return sum + price * (i.quantity || 0);
+        }, 0) || 0;
+
+      const totalAmount = order.totalAmount || calculatedTotal;
+
+      // If order delivered -> show only receipt
+      if (order.orderStatus === "delivered") {
+        return {
+          _id: order._id,
+          orderStatus: order.orderStatus,
+          paymentStatus: order.paymentStatus,
+          restaurant: order.restaurantId,
+          items: order.items,
+          totalAmount,
+          receipt: {
+            orderId: order._id,
+            restaurantName: order.restaurantId?.name,
+            address: order.restaurantId?.address,
+            items: order.items.map((i) => ({
+              name: i.menuItemId?.name,
+              description: i.menuItemId?.description,
+              price: i.menuItemId?.price,
+              quantity: i.quantity,
+              total: (i.quantity || 0) * (i.menuItemId?.price || 0),
+            })),
+            totalAmount,
+            paymentStatus: order.paymentStatus === "paid" ? "Paid" : "Pending",
+          },
+        };
+      }
+
+      // If not delivered → return normal order with safe totalAmount
+      return {
+        ...order._doc, // spread mongoose doc
+        totalAmount,
+      };
+    });
+
     res.status(200).json({
-      messages: " fetched for userOrder successfully!",
-      totalOrder: orders.length,
-      data: orders,
+      message: "Fetched user orders successfully!",
+      data: formattedOrders,
     });
   } catch (error) {
     res.status(500).json({
-      messages: "Failed to fetch user orders",
+      message: "Failed to fetch user orders",
       error: error.message,
     });
   }
 };
+
+
 
 // Get restoruntBy order
 export const getRestaurantOrders = async (req, res) => {
@@ -126,27 +171,21 @@ export const getRestaurantOrders = async (req, res) => {
   try {
     const query = { restaurantId };
 
-    // Search in customer name or order ID
+    // 🔍 Search
     if (typeof search === "string" && search.trim() !== "") {
       query.$or = [
         { FullName: { $regex: search, $options: "i" } },
+        { Date: { $regex: search, $options: "i" } },
         mongoose.Types.ObjectId.isValid(search)
           ? { _id: mongoose.Types.ObjectId(search) }
           : {},
       ];
     }
 
-    // Filter by order status
-    if (orderStatus) {
-      query.orderStatus = orderStatus;
-    }
+    if (orderStatus) query.orderStatus = orderStatus;
+    if (paymentStatus) query.paymentStatus = paymentStatus;
 
-    // Filter by payment status
-    if (paymentStatus) {
-      query.paymentStatus = paymentStatus;
-    }
-
-    // Filter by date range
+    // 📅 Date filter
     if (startDate && !isNaN(Date.parse(startDate))) {
       query.createdAt = { ...query.createdAt, $gte: new Date(startDate) };
     }
@@ -164,6 +203,22 @@ export const getRestaurantOrders = async (req, res) => {
       .limit(parseInt(limit))
       .sort({ createdAt: -1 });
 
+    // ✅ Build a new array with totalAmount
+    const updatedOrders = orders.map((order) => {
+      let total = 0;
+      order.items.forEach((it) => {
+        total += (it.menuItemId?.price || 0) * (it.quantity || 1);
+      });
+
+      return {
+        ...order._doc, // keep original fields
+        cartId: {
+          ...order.cartId?._doc,
+          totalAmount: order.cartId?.totalAmount || total,
+        },
+      };
+    });
+
     const total = await OrderSche.countDocuments(query);
 
     res.status(200).json({
@@ -171,7 +226,7 @@ export const getRestaurantOrders = async (req, res) => {
       total,
       totalPages: Math.ceil(total / limit),
       currentPage: Number(page),
-      data: orders,
+      data: updatedOrders, // ✅ return correct data
     });
   } catch (error) {
     res.status(500).json({

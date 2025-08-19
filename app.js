@@ -13,6 +13,8 @@ import connectDB from "./src/Config/Server.js";
 import { Cart_Routes } from "./src/Routes/Cart.js";
 import { fileURLToPath } from "url";
 import { UserProfile_Routes } from "./src/Routes/UserProfiles.js";
+import { Dashboard_Routes } from "./src/Routes/Dashboard.js";
+import { OrderReceipte_Routes } from "./src/Routes/downloadOrderReceipt.js";
 
 // Env Confing
 dotenv.config();
@@ -43,6 +45,8 @@ app.use(
 
 // Routes
 app.use("/user", User_Routes);
+app.use("/dashboard", Dashboard_Routes);
+app.use("/receipt", OrderReceipte_Routes);
 app.use("/menu", FoodMenu_Routes);
 app.use("/restaurunt", Restorant_Routes);
 app.use("/order", Order_Routes);

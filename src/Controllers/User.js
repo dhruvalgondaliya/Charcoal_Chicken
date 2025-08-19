@@ -1,4 +1,4 @@
-import OrderSche from "../Models/OrderSchema .js";
+import OrderSche from "../Models/OrderSch.js";
 import User from "../Models/User.js";
 import jwt from "jsonwebtoken";
 

@@ -80,6 +80,6 @@ const OrderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const OrderSche = mongoose.model("Order", OrderSchema);
+const OrderSche = mongoose.models.Order || mongoose.model("Order", OrderSchema);
 
 export default OrderSche;
