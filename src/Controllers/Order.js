@@ -89,55 +89,72 @@ export const getUserByIdOrder = async (req, res) => {
     const orders = await OrderSche.find({ userId })
       .populate("items.menuItemId", "name description price")
       .populate("restaurantId", "name address")
-      .populate("cartId", "");
+      .populate("userId", "userName email phone");
 
     if (!orders || orders.length === 0) {
-      return res
-        .status(404)
-        .json({ message: "No Orders Found for this User" });
+      return res.status(404).json({ message: "No Orders Found for this User" });
     }
 
-    // Format response
     const formattedOrders = orders.map((order) => {
-      // Calculate total if missing
-      const calculatedTotal =
+      // Subtotal calculation (variant price > menuItem price)
+      const subtotal =
         order.items?.reduce((sum, i) => {
-          const price = i.menuItemId?.price || 0;
+          const price = i.variant?.price || i.menuItemId?.price || 0;
           return sum + price * (i.quantity || 0);
         }, 0) || 0;
 
-      const totalAmount = order.totalAmount || calculatedTotal;
+      // Example tax: 5%
+      const taxRate = 0.05;
+      const taxAmount = subtotal * taxRate;
 
-      // If order delivered -> show only receipt
+      const totalAmount = subtotal + taxAmount;
+
+      // If order delivered → show only receipt
       if (order.orderStatus === "delivered") {
         return {
           _id: order._id,
+          createdAt: order.createdAt,
           orderStatus: order.orderStatus,
           paymentStatus: order.paymentStatus,
           restaurant: order.restaurantId,
+          user: order.userId,
           items: order.items,
+          paymentType: order.paymentMethod,
+          subtotal,
+          taxAmount,
           totalAmount,
           receipt: {
             orderId: order._id,
             restaurantName: order.restaurantId?.name,
             address: order.restaurantId?.address,
+            user: order.userId,
+            user: order.userName,
             items: order.items.map((i) => ({
               name: i.menuItemId?.name,
               description: i.menuItemId?.description,
-              price: i.menuItemId?.price,
+              variant: i.variant || null,
+              price: i.variant?.price || i.menuItemId?.price,
               quantity: i.quantity,
-              total: (i.quantity || 0) * (i.menuItemId?.price || 0),
+              total:
+                (i.quantity || 0) *
+                (i.variant?.price || i.menuItemId?.price || 0),
             })),
+            subtotal,
+            taxAmount,
             totalAmount,
             paymentStatus: order.paymentStatus === "paid" ? "Paid" : "Pending",
           },
         };
       }
 
-      // If not delivered → return normal order with safe totalAmount
+      // If not delivered → return normal order
       return {
-        ...order._doc, // spread mongoose doc
+        ...order._doc,
+        createdAt: order.createdAt,
+        subtotal,
+        taxAmount,
         totalAmount,
+        user: order.userId,
       };
     });
 
@@ -152,8 +169,6 @@ export const getUserByIdOrder = async (req, res) => {
     });
   }
 };
-
-
 
 // Get restoruntBy order
 export const getRestaurantOrders = async (req, res) => {

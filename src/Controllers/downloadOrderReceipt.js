@@ -1,15 +1,19 @@
 import PDFDocument from "pdfkit";
-import Order from "../models/OrderSch.js";
+import OrderSche from "../Models/OrderSch.js";
 
 export const getOrderReceipt = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { download } = req.query;
 
-    // Fetch order
-    const order = await Order.findById(orderId)
+    // Fetch order with cart data populated
+    const order = await OrderSche.findById(orderId)
       .populate("items.menuItemId", "name description price")
-      .populate("restaurantId", "name address phone email");
+      .populate("restaurantId", "name address phone email")
+      .populate(
+        "cartId",
+        "subTotal taxAmount totalAmount discountAmount deliveryCharge"
+      );
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
@@ -17,12 +21,12 @@ export const getOrderReceipt = async (req, res) => {
 
     const date = new Date(order.createdAt);
 
-    // Calculate safe numbers from your actual data structure
-    const subTotal = order.subTotal ?? 0;
-    const tax = order.taxAmount ?? 0;
-    const discount = order.discountAmount ?? 0;
-    const deliveryCharge = order.deliveryCharge ?? 0;
-    const totalAmount = order.totalAmount ?? 0;
+    // Calculate safe numbers from cart data
+    const subTotal = order.cartId?.subTotal ?? 0;
+    const tax = order.cartId?.taxAmount ?? 0;
+    const discount = order.cartId?.discountAmount ?? 0;
+    const deliveryCharge = order.cartId?.deliveryCharge ?? 0;
+    const totalAmount = order.cartId?.totalAmount ?? 0;
 
     // Set headers
     res.setHeader(
@@ -197,6 +201,17 @@ export const getOrderReceipt = async (req, res) => {
         orderInfoY + 42
       );
 
+    doc
+      .fontSize(11)
+      .font("Helvetica-Bold")
+      .fillColor("#2c3e50")
+      .text("Payment Method:", rightColX, orderInfoY + 60);
+    doc
+      .fontSize(11)
+      .font("Helvetica")
+      .fillColor("#7f8c8d")
+      .text(`${order.paymentMethod}`, rightColX, orderInfoY + 74);
+
     doc.y = orderInfoY + 90;
     addSpace(20);
 
@@ -214,17 +229,15 @@ export const getOrderReceipt = async (req, res) => {
       x: leftMargin,
       width: contentWidth,
       cols: {
-        No: { width: 20 },
-        item: { width: 250 },
+        item: { width: 280 },
         qty: { width: 80 },
-        price: { width: 100 },
+        price: { width: 80 },
         total: { width: 80 },
       },
     };
 
     // Calculate column positions
     let currentX = table.x;
-    table.No.x = currentX;
     table.cols.item.x = currentX;
     currentX += table.cols.item.width;
     table.cols.qty.x = currentX;
@@ -269,7 +282,6 @@ export const getOrderReceipt = async (req, res) => {
     doc.fontSize(12).font("Helvetica-Bold");
 
     const headerTextY = headerY + 10;
-    doc.text("No", table.cols.No.x + 10, headerTextY);
     doc.text("ITEM", table.cols.item.x + 10, headerTextY);
     doc.text("QTY", table.cols.qty.x, headerTextY, {
       width: table.cols.qty.width,
@@ -289,7 +301,7 @@ export const getOrderReceipt = async (req, res) => {
     // Table rows
     order.items.forEach((item, index) => {
       // Extract price from your actual nested data structure
-      const price = item.variant?.price || item.price || 0; 
+      const price = item.variant?.price || item.price || 0; // Use variant.price first
       const qty = item.quantity || 0;
       const lineTotal = qty * price; // Calculate: variant.price * quantity
 
@@ -391,7 +403,7 @@ export const getOrderReceipt = async (req, res) => {
     addSpace(20);
 
     // === SUMMARY SECTION ===
-    const summaryStartX = rightMargin - 200;
+    const summaryStartX = rightMargin - 220;
     const summaryLabelX = summaryStartX;
     const summaryValueX = rightMargin - 20;
 
@@ -400,7 +412,7 @@ export const getOrderReceipt = async (req, res) => {
 
       if (isTotal) {
         doc
-          .rect(summaryStartX - 10, currentY - 5, 210, 25)
+          .rect(summaryStartX - 10, currentY - 5, 230, 25)
           .fillColor("#34495e")
           .fill();
         doc.fillColor("#ffffff");
@@ -412,29 +424,47 @@ export const getOrderReceipt = async (req, res) => {
         .fontSize(isBold || isTotal ? 12 : 11)
         .font(isBold || isTotal ? "Helvetica-Bold" : "Helvetica")
         .text(label, summaryLabelX, currentY + (isTotal ? 5 : 0))
-        .text(value, summaryValueX, currentY + (isTotal ? 5 : 0), {
+        .text(value, summaryValueX - 100, currentY + (isTotal ? 5 : 0), {
           align: "right",
           width: 100,
         });
 
-      doc.y += isTotal ? 25 : 20;
+      doc.y += isTotal ? 30 : 22;
     };
 
-    addSummaryLine("Subtotal:", `₹${subTotal.toFixed(2)}`);
-    addSummaryLine("Tax:", `₹${tax.toFixed(2)}`);
-    if (discount > 0) {
-      addSummaryLine("Discount:", `-₹${discount.toFixed(2)}`);
+    // Debug: Log the values to see what we're working with
+    console.log("Summary values:", {
+      subTotal,
+      tax,
+      discount,
+      deliveryCharge,
+      totalAmount,
+    });
+
+    addSummaryLine("Subtotal:", `₹${Number(subTotal || 0).toFixed(2)}`);
+    addSummaryLine("Tax:", `₹${Number(tax || 0).toFixed(2)}`);
+
+    if (Number(discount || 0) > 0) {
+      addSummaryLine("Discount:", `-₹${Number(discount).toFixed(2)}`);
     }
+
     addSummaryLine(
       "Delivery Charge:",
-      deliveryCharge === 0 ? "FREE" : `₹${deliveryCharge.toFixed(2)}`
+      Number(deliveryCharge || 0) === 0
+        ? "FREE"
+        : `₹${Number(deliveryCharge).toFixed(2)}`
     );
 
-    addSpace(10);
+    addSpace(5);
     drawLine(summaryStartX, doc.y, rightMargin, doc.y);
     addSpace(10);
 
-    addSummaryLine("TOTAL AMOUNT:", `₹${totalAmount.toFixed(2)}`, false, true);
+    addSummaryLine(
+      "TOTAL AMOUNT:",
+      `₹${Number(totalAmount || 0).toFixed(2)}`,
+      false,
+      true
+    );
 
     addSpace(40);
 
@@ -451,7 +481,7 @@ export const getOrderReceipt = async (req, res) => {
         width: contentWidth,
       });
 
-    addSpace(10);
+    addSpace(2);
 
     doc
       .fontSize(9)
@@ -465,7 +495,7 @@ export const getOrderReceipt = async (req, res) => {
         }
       );
 
-    addSpace(10);
+    addSpace(2);
 
     doc
       .fontSize(8)
