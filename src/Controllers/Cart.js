@@ -22,6 +22,7 @@ export const addToCart = async (req, res) => {
       return res.status(404).json({ message: "Menu item not found" });
     }
 
+    // Validate variant if required
     let selectedVariant = null;
     if (menuItem.variants && menuItem.variants.length > 0) {
       if (!variantId) {
@@ -44,9 +45,11 @@ export const addToCart = async (req, res) => {
       selectedVariant = { size: null, price: menuItem.price, _id: null };
     }
 
+    // Calculate base price + addons
     let basePrice = selectedVariant.price;
+    let validAddOns = [];
     if (addOns && addOns.length > 0) {
-      const validAddOns = menuItem.addOns.filter((a) =>
+      validAddOns = menuItem.addOns.filter((a) =>
         addOns.includes(a._id.toString())
       );
       basePrice += validAddOns.reduce((sum, a) => sum + a.price, 0);
@@ -59,53 +62,28 @@ export const addToCart = async (req, res) => {
     let cart = await CartSche.findOne({ userId });
 
     if (!cart) {
-      // Create new cart if it doesn't exist
-      cart = await CartSche.create({ userId, items: [] });
+      // Create new cart if not exists
+      cart = new CartSche({ userId, items: [] });
+    } else {
+      // 🟢 IMPORTANT: Clear old items before adding new one
+      cart.items = [];
     }
 
-    // Check for existing item with the same menuItemId, variantId, and addOns
-    const existingItemIndex = cart.items.findIndex((item) => {
-      const sameMenuItem = item.menuItemId.toString() === menuItemId;
-      const sameVariant = !variantId
-        ? !item.variant || !item.variant._id
-        : item.variant &&
-          item.variant._id &&
-          item.variant._id.toString() === variantId;
-      const sameAddOns =
-        JSON.stringify(item.addOns.map((a) => a._id)) ===
-        JSON.stringify(addOns || []);
-      return sameMenuItem && sameVariant && sameAddOns;
+    // Push the new item
+    cart.items.push({
+      menuItemId,
+      variant: selectedVariant,
+      quantity,
+      addOns: validAddOns.map((a) => ({
+        _id: a._id,
+        name: a.name,
+        price: a.price,
+      })),
+      price: itemPriceBeforeTax,
+      tax: taxAmount,
     });
 
-    if (existingItemIndex !== -1) {
-      // Update existing item quantity and recalculate
-      const existingItem = cart.items[existingItemIndex];
-      const newQuantity = existingItem.quantity + quantity;
-      const newItemPriceBeforeTax = basePrice * newQuantity;
-      const newTaxAmount =
-        Math.round(newItemPriceBeforeTax * taxRate * 100) / 100;
-
-      cart.items[existingItemIndex] = {
-        ...existingItem,
-        quantity: newQuantity,
-        price: newItemPriceBeforeTax,
-        tax: newTaxAmount,
-      };
-    } else {
-      // Add new item if it doesn't exist
-      cart.items.push({
-        menuItemId,
-        variant: selectedVariant,
-        quantity,
-        addOns: addOns
-          ? addOns.map((id) => ({ _id: id, name: "", price: 0 }))
-          : [],
-        price: itemPriceBeforeTax,
-        tax: taxAmount,
-      });
-    }
-
-    // Recalculate cart totals
+    // Recalculate totals
     const totalAmountBeforeTax = cart.items.reduce(
       (sum, item) => sum + (Number(item.price) || 0),
       0
@@ -148,16 +126,20 @@ export const addToCart = async (req, res) => {
 
     await cart.save({ validateModifiedOnly: true });
 
-    res.status(200).json({ message: "Item added to cart successfully", cart });
+    res.status(200).json({
+      message: "Item added to cart successfully (old items removed)",
+      cart,
+    });
   } catch (error) {
     console.error("Add to cart error:", error);
 
     res.status(500).json({
       message: "Failed to add to cart",
-      error: error.message || error.toString() || "Unknown error",
+      error: error.message || "Unknown error",
     });
   }
 };
+
 
 // Fetch Cart By UserId
 export const fetchCartByUserId = async (req, res) => {

@@ -89,7 +89,8 @@ export const getUserByIdOrder = async (req, res) => {
     const orders = await OrderSche.find({ userId })
       .populate("items.menuItemId", "name description price")
       .populate("restaurantId", "name address")
-      .populate("userId", "userName email phone");
+      .populate("userId", "userName email phone")
+      .sort({ createdAt: -1 });
 
     if (!orders || orders.length === 0) {
       return res.status(404).json({ message: "No Orders Found for this User" });
@@ -188,13 +189,30 @@ export const getRestaurantOrders = async (req, res) => {
 
     // 🔍 Search
     if (typeof search === "string" && search.trim() !== "") {
-      query.$or = [
-        { FullName: { $regex: search, $options: "i" } },
-        { Date: { $regex: search, $options: "i" } },
-        mongoose.Types.ObjectId.isValid(search)
-          ? { _id: mongoose.Types.ObjectId(search) }
-          : {},
+      const orConditions = [
+        { "deliveryAddress.FullName": { $regex: search, $options: "i" } },
+        { "deliveryAddress.PhoneNumber": { $regex: search, $options: "i" } },
+        { "deliveryAddress.City": { $regex: search, $options: "i" } },
+        { paymentStatus: { $regex: search, $options: "i" } },
+        { orderStatus: { $regex: search, $options: "i" } },
+        { paymentMethod: { $regex: search, $options: "i" } },
       ];
+
+      // 🔍 If search looks like ObjectId
+      if (mongoose.Types.ObjectId.isValid(search)) {
+        orConditions.push({ _id: mongoose.Types.ObjectId(search) });
+      }
+
+      // 🔍 If search is a valid date string (like "2025-08-20")
+      if (!isNaN(Date.parse(search))) {
+        const date = new Date(search);
+        const nextDay = new Date(date);
+        nextDay.setDate(date.getDate() + 1);
+
+        orConditions.push({ createdAt: { $gte: date, $lt: nextDay } });
+      }
+
+      query.$or = orConditions;
     }
 
     if (orderStatus) query.orderStatus = orderStatus;
@@ -220,16 +238,24 @@ export const getRestaurantOrders = async (req, res) => {
 
     // ✅ Build a new array with totalAmount
     const updatedOrders = orders.map((order) => {
-      let total = 0;
-      order.items.forEach((it) => {
-        total += (it.menuItemId?.price || 0) * (it.quantity || 1);
-      });
+      const subtotal =
+        order.items?.reduce((sum, i) => {
+          const price = i.variant?.price || i.menuItemId?.price || 0;
+          return sum + price * (i.quantity || 0);
+        }, 0) || 0;
+
+      // Example tax: 5%
+      const taxRate = 0.05;
+      const taxAmount = subtotal * taxRate;
+      const totalAmount = subtotal + taxAmount;
 
       return {
-        ...order._doc, // keep original fields
+        ...order._doc,
         cartId: {
           ...order.cartId?._doc,
-          totalAmount: order.cartId?.totalAmount || total,
+          subtotal,
+          taxAmount,
+          totalAmount,
         },
       };
     });
@@ -241,7 +267,7 @@ export const getRestaurantOrders = async (req, res) => {
       total,
       totalPages: Math.ceil(total / limit),
       currentPage: Number(page),
-      data: updatedOrders, // ✅ return correct data
+      data: updatedOrders,
     });
   } catch (error) {
     res.status(500).json({

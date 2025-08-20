@@ -68,7 +68,7 @@ const OrderSchema = new mongoose.Schema(
         "delivered",
         "cancelled",
       ],
-      default: "pending",
+      default: "confirmed",
     },
     paymentMethod: {
       type: String,
