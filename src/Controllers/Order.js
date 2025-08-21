@@ -1,6 +1,9 @@
 import OrderSche from "../Models/OrderSch.js";
 import CartSche from "../Models/Cart.js";
 import mongoose from "mongoose";
+import sendMail from "../services/mailService.js";
+import User from "../Models/User.js";
+import { formatCurrency } from "../Utiles/Currency.js";
 
 // create Order Api
 export const createOrder = async (req, res) => {
@@ -40,7 +43,7 @@ export const createOrder = async (req, res) => {
       subTotal: cart.subTotal,
       taxAmount: cart.taxAmount,
       deliveryCharge: cart.deliveryCharge,
-      totalAmount: cart.totalAmount,
+      totalAmount: cart.totalAmount
     });
 
     // Clear cart after placing order
@@ -49,12 +52,12 @@ export const createOrder = async (req, res) => {
 
     res.status(201).json({
       message: "Order placed successfully",
-      data: order,
+      data: order
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to place order",
-      error: error.message,
+      error: error.message
     });
   }
 };
@@ -71,12 +74,12 @@ export const getAllOrder = async (req, res) => {
       messages: "All Order Fetch SuccessFully!",
       totalOrder: orders.length,
       data: orders,
-      orderId: newOrder._id,
+      orderId: newOrder._id
     });
   } catch (error) {
     res.status(500).json({
       messages: "Failed To Fetch All Order",
-      error: error.message,
+      error: error.message
     });
   }
 };
@@ -138,13 +141,13 @@ export const getUserByIdOrder = async (req, res) => {
               quantity: i.quantity,
               total:
                 (i.quantity || 0) *
-                (i.variant?.price || i.menuItemId?.price || 0),
+                (i.variant?.price || i.menuItemId?.price || 0)
             })),
             subtotal,
             taxAmount,
             totalAmount,
-            paymentStatus: order.paymentStatus === "paid" ? "Paid" : "Pending",
-          },
+            paymentStatus: order.paymentStatus === "paid" ? "Paid" : "Pending"
+          }
         };
       }
 
@@ -155,18 +158,18 @@ export const getUserByIdOrder = async (req, res) => {
         subtotal,
         taxAmount,
         totalAmount,
-        user: order.userId,
+        user: order.userId
       };
     });
 
     res.status(200).json({
       message: "Fetched user orders successfully!",
-      data: formattedOrders,
+      data: formattedOrders
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to fetch user orders",
-      error: error.message,
+      error: error.message
     });
   }
 };
@@ -181,7 +184,7 @@ export const getRestaurantOrders = async (req, res) => {
     orderStatus,
     paymentStatus,
     startDate,
-    endDate,
+    endDate
   } = req.query;
 
   try {
@@ -195,7 +198,7 @@ export const getRestaurantOrders = async (req, res) => {
         { "deliveryAddress.City": { $regex: search, $options: "i" } },
         { paymentStatus: { $regex: search, $options: "i" } },
         { orderStatus: { $regex: search, $options: "i" } },
-        { paymentMethod: { $regex: search, $options: "i" } },
+        { paymentMethod: { $regex: search, $options: "i" } }
       ];
 
       // 🔍 If search looks like ObjectId
@@ -255,29 +258,136 @@ export const getRestaurantOrders = async (req, res) => {
           ...order.cartId?._doc,
           subtotal,
           taxAmount,
-          totalAmount,
-        },
+          totalAmount
+        }
       };
     });
 
     const total = await OrderSche.countDocuments(query);
 
     res.status(200).json({
+      success: true,
       message: "Orders fetched successfully",
-      total,
-      totalPages: Math.ceil(total / limit),
-      currentPage: Number(page),
-      data: updatedOrders,
+      data: {
+        orders: updatedOrders, // Renamed to be more descriptive
+        total,
+        totalPages: Math.ceil(total / limit),
+        currentPage: Number(page)
+      }
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to fetch orders",
-      error: error.message,
+      error: error.message
     });
   }
 };
 
-// update status in oreder or Payment
+// Function to generate email HTML content
+const generateOrderReceiptEmail = (order, customerName) => {
+  const {
+    orderNumber,
+    items,
+    totalAmount,
+    deliveryAddress,
+    orderStatus,
+    paymentStatus,
+    createdAt
+  } = order;
+
+  // Format items for email
+  const itemsHtml = items
+    .map(
+      (item) => `
+        <tr>
+          <td style="padding: 8px; border: 1px solid #ddd;">${
+            item.FullName || item.menuItemId?.name || "Unknown Item"
+          }</td>
+          <td style="padding: 8px; border: 1px solid #ddd;">${
+            item.quantity
+          }</td>
+          <td style="padding: 8px; border: 1px solid #ddd;">${(
+            item.price * item.quantity
+          ).toFixed(2)}</td>
+        </tr>
+      `
+    )
+    .join("");
+
+  return {
+    html: `
+      <html>
+        <body style="font-family: Arial, sans-serif; color: #333;">
+          <h2>Order Receipt</h2>
+          <p>Dear ${
+            customerName || deliveryAddress?.FullName || "Customer"
+          },</p>
+          <p>Thank you for your order! Below are the details of your order:</p>
+          <h3>Order Details</h3>
+          <p><strong>Order Number:</strong> ${orderNumber || order._id}</p>
+          <p><strong>Order Date:</strong> ${new Date(
+            createdAt
+          ).toLocaleDateString()}</p>
+          <p><strong>Order Status:</strong> ${orderStatus}</p>
+          <p><strong>Payment Status:</strong> ${paymentStatus}</p>
+          <h3>Items</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background-color: #f2f2f2;">
+                <th style="padding: 8px; border: 1px solid #ddd;">Item</th>
+                <th style="padding: 8px; border: 1px solid #ddd;">Quantity</th>
+                <th style="padding: 8px; border: 1px solid #ddd;">Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+          <h3>Total Amount: $${totalAmount.toFixed(2)}</h3>
+          <h3>Delivery Address</h3>
+          <p>${deliveryAddress?.FullName || "N/A"}<br />
+             ${deliveryAddress?.PhoneNumber || "N/A"}</p>
+          <p>Thank you for choosing us!</p>
+          <p>Best regards,<br />Your Restaurant Team</p>
+        </body>
+      </html>
+    `,
+    text: `
+      Order Receipt
+
+      Dear ${customerName || deliveryAddress?.FullName || "Customer"},
+
+      Thank you for your order! Below are the details of your order:
+
+      Order Details
+      Order Number: ${orderNumber || order._id}
+      Order Date: ${new Date(createdAt).toLocaleDateString()}
+      Order Status: ${orderStatus}
+      Payment Status: ${paymentStatus}
+
+      Items:
+      ${items
+        .map(
+          (item) =>
+            `- ${item.FullName || item.menuItemId?.name || "Unknown Item"} x ${
+              item.quantity
+            } = $${(item.price * item.quantity).toFixed(2)}`
+        )
+        .join("\n")}
+
+      Total Amount: $${totalAmount.toFixed(2)}
+
+      Delivery Address:
+      ${deliveryAddress?.FullName || "N/A"}
+      ${deliveryAddress?.PhoneNumber || "N/A"}
+
+      Thank you for choosing us!
+      Best regards,
+      Your Restaurant Team
+    `
+  };
+};
+
 export const updateOrderAndPaymentStatus = async (req, res) => {
   const { orderId } = req.params;
   const { orderStatus, paymentStatus } = req.body;
@@ -287,7 +397,7 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
     "preparing",
     "on the way",
     "delivered",
-    "cancelled",
+    "cancelled"
   ];
 
   const validPaymentStatuses = ["pending", "paid"];
@@ -302,7 +412,6 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
 
   try {
     const updateFields = {};
-
     if (orderStatus) updateFields.orderStatus = orderStatus;
     if (paymentStatus) updateFields.paymentStatus = paymentStatus;
 
@@ -310,24 +419,157 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
       orderId,
       updateFields,
       { new: true }
-    );
+    ).populate("items.menuItemId", "name price"); // Populate menuItem data
 
     if (!updatedOrder) {
       return res.status(404).json({ message: "Order not found" });
     }
 
+    // Send email only when order status is "delivered"
+    if (orderStatus === "delivered") {
+      // Fetch customer email (assuming linked via userId or deliveryAddress)
+      let customerEmail = updatedOrder.deliveryAddress?.email;
+      let customerName = updatedOrder.deliveryAddress?.FullName;
+
+      // If email is not in deliveryAddress, fetch from User model
+      if (!customerEmail && updatedOrder.userId) {
+        const user = await User.findById(updatedOrder.userId);
+        customerEmail = user?.Email;
+        customerName = user?.name || customerName;
+      }
+
+      if (!customerEmail) {
+        console.warn("No customer email found for order:", orderId);
+      } else {
+        try {
+          // Generate simple text email with proper error handling
+          const textEmail = generateSimpleOrderReceipt(
+            updatedOrder,
+            customerName
+          );
+
+          // Send simple text email (no HTML)
+          await sendMail(
+            customerEmail,
+            `Order Receipt - Order #${
+              updatedOrder.orderNumber || updatedOrder._id
+            }`,
+            textEmail // Only text content
+          );
+          console.log("Order receipt email sent to:", customerEmail);
+        } catch (emailError) {
+          console.error(
+            "Failed to send order receipt email:",
+            emailError.message
+          );
+          // Continue with the order update even if email fails
+        }
+      }
+    }
+
     res.status(200).json({
       message: "Order and payment status updated successfully",
-      data: updatedOrder,
+      data: updatedOrder
     });
   } catch (error) {
+    console.error("Failed to update order:", error.message);
     res.status(500).json({
       message: "Failed to update statuses",
-      error: error.message,
+      error: error.message
     });
   }
 };
 
+// Fixed email generation function with proper error handling
+const generateSimpleOrderReceipt = (order, customerName) => {
+  try {
+    const {
+      orderNumber,
+      items,
+      totalAmount,
+      deliveryAddress,
+      orderStatus,
+      paymentStatus,
+      createdAt
+    } = order;
+
+    // Safely calculate total amount if not provided
+    const calculatedTotal = totalAmount || calculateOrderTotal(items);
+
+    // Format items for text email
+    const itemsText = items
+      .map((item) => {
+        const itemName =
+          item.FullName ||
+          (item.menuItemId && item.menuItemId.name) ||
+          "Unknown Item";
+        const itemPrice = item.price || 0;
+        const itemQuantity = item.quantity || 1;
+        const itemTotal = itemPrice * itemQuantity;
+
+        return `${itemName} x ${itemQuantity} = $${itemTotal.toFixed(2)}`;
+      })
+      .join("\n");
+
+    return `
+      Order Receipt
+
+      Dear ${customerName || deliveryAddress?.FullName || "Customer"},
+
+      Thank you for your order! Below are the details of your order:
+
+      Order Details:
+      Order Number: ${orderNumber || order._id || "N/A"}
+      Order Date: ${createdAt ? new Date(createdAt).toLocaleDateString() : "N/A"}
+      Order Status: ${orderStatus || "N/A"}
+      Payment Status: ${paymentStatus || "N/A"}
+
+      Items:
+      ${itemsText || "No items found"}
+
+      Total Amount: ${formatCurrency(calculatedTotal || 0)}
+
+        Delivery Address:
+        ${deliveryAddress?.FullName || "N/A"}
+        ${deliveryAddress?.PhoneNumber || "N/A"}
+        ${deliveryAddress?.Address || "N/A"}
+        ${deliveryAddress?.City || "N/A"} ${deliveryAddress?.ZIPCode || "N/A"}
+
+      Thank you for choosing us!
+      Best regards,
+      Your Restaurant Team
+          `;
+  } catch (error) {
+    console.error("Error generating email receipt:", error);
+    // Fallback simple message if generation fails
+    return `
+    Order Receipt
+
+    Dear Customer,
+
+    Thank you for your order! Your order #${order._id} has been delivered.
+
+    Please contact us if you need more details about your order.
+
+    Best regards,
+    Your Restaurant Team
+        `;
+      }
+    };
+
+// Helper function to calculate order total if not provided
+const calculateOrderTotal = (items) => {
+  try {
+    return items.reduce((total, item) => {
+      const itemPrice = item.price || 0;
+      const itemQuantity = item.quantity || 1;
+      return total + itemPrice * itemQuantity;
+    }, 0);
+  } catch (error) {
+    console.error("Error calculating order total:", error);
+    return 0;
+  }
+};
 // Update User Order
 export const updateUserOrder = async (req, res) => {
   const { userId, OrderId } = req.params;
@@ -350,12 +592,12 @@ export const updateUserOrder = async (req, res) => {
 
     res.status(200).json({
       message: "Order updated successfully",
-      data: order,
+      data: order
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to update the order",
-      error: error.message,
+      error: error.message
     });
   }
 };
@@ -375,23 +617,23 @@ export const deleteUserOrder = async (req, res) => {
 
     const deletedOrder = await OrderSche.findOneAndDelete({
       _id: OrderId,
-      userId: userId,
+      userId: userId
     });
 
     if (!deletedOrder) {
       return res.status(404).json({
-        message: "Order not found or doesn't belong to this user",
+        message: "Order not found or doesn't belong to this user"
       });
     }
 
     res.status(200).json({
       message: "Order deleted successfully",
-      data: deletedOrder,
+      data: deletedOrder
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to delete user order",
-      error: error.message,
+      error: error.message
     });
   }
 };
