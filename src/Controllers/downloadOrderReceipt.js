@@ -1,5 +1,6 @@
 import PDFDocument from "pdfkit";
 import OrderSche from "../Models/OrderSch.js";
+import { formatCurrency } from "../Utiles/Currency.js";
 
 export const getOrderReceipt = async (req, res) => {
   try {
@@ -66,8 +67,9 @@ export const getOrderReceipt = async (req, res) => {
     const contentWidth = rightMargin - leftMargin;
 
     // === HEADER SECTION ===
-    doc.fillColor("#2c3e50");
+    // Move cursor below logo before writing title
     doc
+      .fillColor("#2c3e50")
       .fontSize(24)
       .font("Helvetica-Bold")
       .text("ORDER RECEIPT", leftMargin, 50, {
@@ -386,13 +388,12 @@ export const getOrderReceipt = async (req, res) => {
       });
 
       // Price (variant price)
-      doc.text(`₹${price.toFixed(2)}`, table.cols.price.x, textY, {
+      doc.text(formatCurrency(price), table.cols.price.x, textY, {
         width: table.cols.price.width,
         align: "center",
       });
 
-      // Total (variant.price * quantity)
-      doc.text(`₹${lineTotal.toFixed(2)}`, table.cols.total.x, textY, {
+      doc.text(formatCurrency(lineTotal), table.cols.total.x, textY, {
         width: table.cols.total.width,
         align: "center",
       });
@@ -432,27 +433,19 @@ export const getOrderReceipt = async (req, res) => {
       doc.y += isTotal ? 30 : 22;
     };
 
-    // Debug: Log the values to see what we're working with
-    console.log("Summary values:", {
-      subTotal,
-      tax,
-      discount,
-      deliveryCharge,
-      totalAmount,
-    });
+    addSummaryLine("Subtotal:", formatCurrency(subTotal || 0));
 
-    addSummaryLine("Subtotal:", `₹${Number(subTotal || 0).toFixed(2)}`);
-    addSummaryLine("Tax:", `₹${Number(tax || 0).toFixed(2)}`);
+    addSummaryLine("Tax:", formatCurrency(tax || 0));
 
     if (Number(discount || 0) > 0) {
-      addSummaryLine("Discount:", `-₹${Number(discount).toFixed(2)}`);
+      addSummaryLine("Discount:", formatCurrency(discount));
     }
 
     addSummaryLine(
       "Delivery Charge:",
       Number(deliveryCharge || 0) === 0
         ? "FREE"
-        : `₹${Number(deliveryCharge).toFixed(2)}`
+        : formatCurrency(deliveryCharge)
     );
 
     addSpace(5);
@@ -461,7 +454,7 @@ export const getOrderReceipt = async (req, res) => {
 
     addSummaryLine(
       "TOTAL AMOUNT:",
-      `₹${Number(totalAmount || 0).toFixed(2)}`,
+      formatCurrency(totalAmount || 0),
       false,
       true
     );
