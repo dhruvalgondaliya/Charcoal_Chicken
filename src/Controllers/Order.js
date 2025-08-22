@@ -43,7 +43,7 @@ export const createOrder = async (req, res) => {
       subTotal: cart.subTotal,
       taxAmount: cart.taxAmount,
       deliveryCharge: cart.deliveryCharge,
-      totalAmount: cart.totalAmount
+      totalAmount: cart.totalAmount,
     });
 
     // Clear cart after placing order
@@ -52,12 +52,12 @@ export const createOrder = async (req, res) => {
 
     res.status(201).json({
       message: "Order placed successfully",
-      data: order
+      data: order,
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to place order",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -74,12 +74,12 @@ export const getAllOrder = async (req, res) => {
       messages: "All Order Fetch SuccessFully!",
       totalOrder: orders.length,
       data: orders,
-      orderId: newOrder._id
+      orderId: newOrder._id,
     });
   } catch (error) {
     res.status(500).json({
       messages: "Failed To Fetch All Order",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -141,13 +141,13 @@ export const getUserByIdOrder = async (req, res) => {
               quantity: i.quantity,
               total:
                 (i.quantity || 0) *
-                (i.variant?.price || i.menuItemId?.price || 0)
+                (i.variant?.price || i.menuItemId?.price || 0),
             })),
             subtotal,
             taxAmount,
             totalAmount,
-            paymentStatus: order.paymentStatus === "paid" ? "Paid" : "Pending"
-          }
+            paymentStatus: order.paymentStatus === "paid" ? "Paid" : "Pending",
+          },
         };
       }
 
@@ -158,18 +158,18 @@ export const getUserByIdOrder = async (req, res) => {
         subtotal,
         taxAmount,
         totalAmount,
-        user: order.userId
+        user: order.userId,
       };
     });
 
     res.status(200).json({
       message: "Fetched user orders successfully!",
-      data: formattedOrders
+      data: formattedOrders,
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to fetch user orders",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -184,13 +184,13 @@ export const getRestaurantOrders = async (req, res) => {
     orderStatus,
     paymentStatus,
     startDate,
-    endDate
+    endDate,
   } = req.query;
 
   try {
     const query = { restaurantId };
 
-    // 🔍 Search
+    // Search
     if (typeof search === "string" && search.trim() !== "") {
       const orConditions = [
         { "deliveryAddress.FullName": { $regex: search, $options: "i" } },
@@ -198,15 +198,15 @@ export const getRestaurantOrders = async (req, res) => {
         { "deliveryAddress.City": { $regex: search, $options: "i" } },
         { paymentStatus: { $regex: search, $options: "i" } },
         { orderStatus: { $regex: search, $options: "i" } },
-        { paymentMethod: { $regex: search, $options: "i" } }
+        { paymentMethod: { $regex: search, $options: "i" } },
       ];
 
-      // 🔍 If search looks like ObjectId
+      // If search looks like ObjectId
       if (mongoose.Types.ObjectId.isValid(search)) {
         orConditions.push({ _id: mongoose.Types.ObjectId(search) });
       }
 
-      // 🔍 If search is a valid date string (like "2025-08-20")
+      // If search is a valid date string (like "2025-08-20")
       if (!isNaN(Date.parse(search))) {
         const date = new Date(search);
         const nextDay = new Date(date);
@@ -258,8 +258,8 @@ export const getRestaurantOrders = async (req, res) => {
           ...order.cartId?._doc,
           subtotal,
           taxAmount,
-          totalAmount
-        }
+          totalAmount,
+        },
       };
     });
 
@@ -272,14 +272,32 @@ export const getRestaurantOrders = async (req, res) => {
         orders: updatedOrders, // Renamed to be more descriptive
         total,
         totalPages: Math.ceil(total / limit),
-        currentPage: Number(page)
-      }
+        currentPage: Number(page),
+      },
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to fetch orders",
-      error: error.message
+      error: error.message,
     });
+  }
+};
+
+export const getCancelledOrdersByRestaurant = async (req, res) => {
+  const { restaurantId } = req.params;
+
+  try {
+    const cancelledOrders = await OrderSche.find({
+      restaurantId,
+      orderStatus: "cancelled",
+    })
+      .populate("userId", "name email")
+      .populate("items.menuItemId", "name price")
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, data: cancelledOrders });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -292,7 +310,7 @@ const generateOrderReceiptEmail = (order, customerName) => {
     deliveryAddress,
     orderStatus,
     paymentStatus,
-    createdAt
+    createdAt,
   } = order;
 
   // Format items for email
@@ -384,10 +402,11 @@ const generateOrderReceiptEmail = (order, customerName) => {
       Thank you for choosing us!
       Best regards,
       Your Restaurant Team
-    `
+    `,
   };
 };
 
+// update pyment status
 export const updateOrderAndPaymentStatus = async (req, res) => {
   const { orderId } = req.params;
   const { orderStatus, paymentStatus } = req.body;
@@ -397,7 +416,7 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
     "preparing",
     "on the way",
     "delivered",
-    "cancelled"
+    "cancelled",
   ];
 
   const validPaymentStatuses = ["pending", "paid"];
@@ -428,7 +447,7 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
     // Send email only when order status is "delivered"
     if (orderStatus === "delivered") {
       // Fetch customer email (assuming linked via userId or deliveryAddress)
-      let customerEmail = updatedOrder.deliveryAddress?.email;
+      let customerEmail = updatedOrder.deliveryAddress?.Email;
       let customerName = updatedOrder.deliveryAddress?.FullName;
 
       // If email is not in deliveryAddress, fetch from User model
@@ -469,13 +488,13 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
 
     res.status(200).json({
       message: "Order and payment status updated successfully",
-      data: updatedOrder
+      data: updatedOrder,
     });
   } catch (error) {
     console.error("Failed to update order:", error.message);
     res.status(500).json({
       message: "Failed to update statuses",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -490,7 +509,7 @@ const generateSimpleOrderReceipt = (order, customerName) => {
       deliveryAddress,
       orderStatus,
       paymentStatus,
-      createdAt
+      createdAt,
     } = order;
 
     // Safely calculate total amount if not provided
@@ -520,7 +539,9 @@ const generateSimpleOrderReceipt = (order, customerName) => {
 
       Order Details:
       Order Number: ${orderNumber || order._id || "N/A"}
-      Order Date: ${createdAt ? new Date(createdAt).toLocaleDateString() : "N/A"}
+      Order Date: ${
+        createdAt ? new Date(createdAt).toLocaleDateString() : "N/A"
+      }
       Order Status: ${orderStatus || "N/A"}
       Payment Status: ${paymentStatus || "N/A"}
 
@@ -554,8 +575,8 @@ const generateSimpleOrderReceipt = (order, customerName) => {
     Best regards,
     Your Restaurant Team
         `;
-      }
-    };
+  }
+};
 
 // Helper function to calculate order total if not provided
 const calculateOrderTotal = (items) => {
@@ -570,6 +591,7 @@ const calculateOrderTotal = (items) => {
     return 0;
   }
 };
+
 // Update User Order
 export const updateUserOrder = async (req, res) => {
   const { userId, OrderId } = req.params;
@@ -592,18 +614,18 @@ export const updateUserOrder = async (req, res) => {
 
     res.status(200).json({
       message: "Order updated successfully",
-      data: order
+      data: order,
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to update the order",
-      error: error.message
+      error: error.message,
     });
   }
 };
 
 // Delete User Order
-export const deleteUserOrder = async (req, res) => {
+export const cancelUserOrder = async (req, res) => {
   const { userId, OrderId } = req.params;
 
   try {
@@ -615,25 +637,27 @@ export const deleteUserOrder = async (req, res) => {
       return res.status(400).json({ message: "Invalid Order ID" });
     }
 
-    const deletedOrder = await OrderSche.findOneAndDelete({
-      _id: OrderId,
-      userId: userId
-    });
+    // Instead of deleting → update status to "Cancelled"
+    const cancelledOrder = await OrderSche.findOneAndUpdate(
+      { _id: OrderId, userId },
+      { $set: { orderStatus: "cancelled", cancelledAt: new Date() } },
+      { new: true }
+    );
 
-    if (!deletedOrder) {
+    if (!cancelledOrder) {
       return res.status(404).json({
-        message: "Order not found or doesn't belong to this user"
+        message: "Order not found or doesn't belong to this user",
       });
     }
 
     res.status(200).json({
-      message: "Order deleted successfully",
-      data: deletedOrder
+      message: "Order cancelled successfully",
+      data: cancelledOrder,
     });
   } catch (error) {
     res.status(500).json({
-      message: "Failed to delete user order",
-      error: error.message
+      message: "Failed to cancel user order",
+      error: error.message,
     });
   }
 };
