@@ -1,5 +1,9 @@
 import restaurant from "../Models/Restaurant.js";
 import jwt from "jsonwebtoken";
+import {
+  approvalEmailTemplate,
+  rejectionEmailTemplate
+} from "../templates/EmailStatusMail.js";
 
 // Create Restaurant
 export const createRestaurant = async (req, res) => {
@@ -19,17 +23,17 @@ export const createRestaurant = async (req, res) => {
       Password,
       phone,
       address,
-      cuisines,
+      cuisines
     });
 
     res.status(201).json({
       message: "Restaurant Created Successfully!",
-      data: newResto,
+      data: newResto
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to Create Restaurant",
-      error: error.message,
+      error: error.message
     });
   }
 };
@@ -48,7 +52,7 @@ export const loginRestaurant = async (req, res) => {
 
     if (resto.Password !== password) {
       return res.status(401).json({
-        message: "Invalid Email or Password",
+        message: "Invalid Email or Password"
       });
     }
 
@@ -65,33 +69,16 @@ export const loginRestaurant = async (req, res) => {
         id: resto._id,
         name: resto.name,
         email: resto.email,
-        role: resto.role,
-      },
+        role: resto.role
+      }
     });
   } catch (error) {
     res.status(500).json({
       message: "Login failed",
-      error: error.message,
+      error: error.message
     });
   }
 };
-
-// // GetAll Restaurant
-// export const getAllRestaurunt = async (req, res) => {
-//   try {
-//     const getResto = await restaurant.find().populate("reviews");
-
-//     res.status(200).json({
-//       messaage: "All Restaurant Fetch SuccessFully!",
-//       TotalData: getResto.length,
-//       data: getResto,
-//     });
-//   } catch (err) {
-//     res
-//       .status(500)
-//       .json({ message: "Failed To Fetch Restaurant", error: err.message });
-//   }
-// };
 
 // get all Restaurants for admin fetch
 export const getAllRestaurants = async (req, res) => {
@@ -114,17 +101,17 @@ export const RestoFindById = async (req, res) => {
     const getResto = await restaurant.findById(req.params.id);
 
     if (!getResto) {
-      return res.status(404).json({ messaage: "Restaurant Not Found" });
+      return res.status(404).json({ message: "Restaurant Not Found" });
     }
 
     res.status(200).json({
-      messaage: "Restaurant Fetch By Id Successfully",
-      data: getResto,
+      message: "Restaurant Fetch By Id Successfully",
+      data: getResto
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed To Fetch Restaurant By Id ",
-      error: err.message,
+      error: error.message
     });
   }
 };
@@ -143,6 +130,14 @@ export const approveRestaurant = async (req, res) => {
     if (!resto) {
       return res.status(404).json({ message: "Restaurant not found" });
     }
+
+    // Send approval email
+    const emailContent = approvalEmailTemplate(resto.name, resto.ownerName);
+    await sendEmail({
+      to: resto.email,
+      subject: "Restaurant Approval Notification",
+      html: emailContent
+    });
 
     res
       .status(200)
@@ -168,6 +163,14 @@ export const rejectRestaurant = async (req, res) => {
       return res.status(404).json({ message: "Restaurant not found" });
     }
 
+    // Send rejection email
+    const emailContent = rejectionEmailTemplate(resto.name, resto.ownerName);
+    await sendEmail({
+      to: resto.email,
+      subject: "Restaurant Application Update",
+      html: emailContent
+    });
+
     res
       .status(200)
       .json({ message: "Restaurant rejected successfully", resto });
@@ -182,21 +185,21 @@ export const updateRestaurant = async (req, res) => {
   try {
     const Resto = await restaurant.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
-      runValidators: true,
+      runValidators: true
     });
     if (!Resto) {
       return res.status(404).json({
-        messaage: "Restaurant Not Found",
+        message: "Restaurant Not Found"
       });
     }
     res.status(200).json({
-      messaage: "Restaurant Update SuccessFully!",
-      data: Resto,
+      message: "Restaurant Update SuccessFully!",
+      data: Resto
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed To Update Restaurant",
-      error: err.message,
+      error: error.message
     });
   }
 };
@@ -208,17 +211,17 @@ export const deleteRestaurant = async (req, res) => {
 
     if (!Resto) {
       return res.status(404).json({
-        messaage: "Restaurant Not Found",
+        message: "Restaurant Not Found"
       });
     }
     res.status(200).json({
-      messaage: "Restaurant Delete SuccessFully!",
-      data: Resto,
+      message: "Restaurant Delete SuccessFully!",
+      data: Resto
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed To Delete Restaurant",
-      error: err.message,
+      error: error.message
     });
   }
 };

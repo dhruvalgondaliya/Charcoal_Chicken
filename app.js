@@ -56,3 +56,15 @@ app.use("/userProfile", UserProfile_Routes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+
+// MONGO_URL=mongodb+srv://dhruvalgondaliya:mernTrainee51291@foodmain.zkpobiu.mongodb.net/Food_Menu
+// PORT=8000
+// JWT_SECRET="myPasswords32$"
+
+
+// MAIL_HOST="smtp.gmail.com"
+// MAIL_PORT=465
+// MAIL_SECURE=true
+// MAIL_USER="f342dhruval@gmail.com"
+// MAIL_PASS="odav namd ykhv ybzi"

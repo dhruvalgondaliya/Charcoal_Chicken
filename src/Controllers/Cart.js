@@ -64,24 +64,47 @@ export const addToCart = async (req, res) => {
     if (!cart) {
       // Create new cart if not exists
       cart = new CartSche({ userId, items: [] });
-    } else {
-      // 🟢 IMPORTANT: Clear old items before adding new one
-      cart.items = [];
     }
 
-    // Push the new item
-    cart.items.push({
-      menuItemId,
-      variant: selectedVariant,
-      quantity,
-      addOns: validAddOns.map((a) => ({
-        _id: a._id,
-        name: a.name,
-        price: a.price,
-      })),
-      price: itemPriceBeforeTax,
-      tax: taxAmount,
+    // Check if the same item with same variant and addons already exists in cart
+    const existingItemIndex = cart.items.findIndex(item => {
+      // Check if menu item ID matches
+      if (item.menuItemId.toString() !== menuItemId) return false;
+      
+      // Check if variant matches (both null or same ID)
+      const itemVariantId = item.variant?._id?.toString() || null;
+      const newVariantId = selectedVariant._id?.toString() || null;
+      if (itemVariantId !== newVariantId) return false;
+      
+      // Check if addons match (same length and same IDs)
+      if (item.addOns.length !== validAddOns.length) return false;
+      
+      const itemAddOnIds = item.addOns.map(a => a._id.toString()).sort();
+      const newAddOnIds = validAddOns.map(a => a._id.toString()).sort();
+      
+      return JSON.stringify(itemAddOnIds) === JSON.stringify(newAddOnIds);
     });
+
+    if (existingItemIndex !== -1) {
+      // Update quantity if item already exists
+      cart.items[existingItemIndex].quantity += quantity;
+      cart.items[existingItemIndex].price += itemPriceBeforeTax;
+      cart.items[existingItemIndex].tax += taxAmount;
+    } else {
+      // Add new item if it doesn't exist
+      cart.items.push({
+        menuItemId,
+        variant: selectedVariant,
+        quantity,
+        addOns: validAddOns.map((a) => ({
+          _id: a._id,
+          name: a.name,
+          price: a.price,
+        })),
+        price: itemPriceBeforeTax,
+        tax: taxAmount,
+      });
+    }
 
     // Recalculate totals
     const totalAmountBeforeTax = cart.items.reduce(
@@ -127,7 +150,9 @@ export const addToCart = async (req, res) => {
     await cart.save({ validateModifiedOnly: true });
 
     res.status(200).json({
-      message: "Item added to cart successfully (old items removed)",
+      message: existingItemIndex !== -1 
+        ? "Item quantity updated in cart" 
+        : "Item added to cart successfully",
       cart,
     });
   } catch (error) {

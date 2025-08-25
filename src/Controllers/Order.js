@@ -1,9 +1,8 @@
 import OrderSche from "../Models/OrderSch.js";
 import CartSche from "../Models/Cart.js";
 import mongoose from "mongoose";
-import sendMail from "../services/mailService.js";
 import User from "../Models/User.js";
-import { formatCurrency } from "../Utiles/Currency.js";
+import { sendOrderReceiptEmail } from "../services/emailService.js";
 
 // create Order Api
 export const createOrder = async (req, res) => {
@@ -23,7 +22,7 @@ export const createOrder = async (req, res) => {
       return res.status(400).json({ message: "Cart is empty" });
     }
 
-    // Assuming all items in the cart
+    // Assuming all items in the cart are from the same restaurant
     const restaurantId = cart.items[0]?.menuItemId?.restaurantId;
     if (!restaurantId) {
       return res
@@ -39,10 +38,11 @@ export const createOrder = async (req, res) => {
       deliveryAddress,
       paymentMethod,
       paymentStatus: paymentMethod === "cod" ? "pending" : "paid",
+
       subTotal: cart.subTotal,
       taxAmount: cart.taxAmount,
       deliveryCharge: cart.deliveryCharge,
-      totalAmount: cart.totalAmount,
+      totalAmount: cart.totalAmount
     });
 
     // Clear cart after placing order
@@ -51,12 +51,12 @@ export const createOrder = async (req, res) => {
 
     res.status(201).json({
       message: "Order placed successfully",
-      data: order,
+      data: order
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to place order",
-      error: error.message,
+      error: error.message
     });
   }
 };
@@ -73,12 +73,12 @@ export const getAllOrder = async (req, res) => {
       messages: "All Order Fetch SuccessFully!",
       totalOrder: orders.length,
       data: orders,
-      orderId: newOrder._id,
+      orderId: newOrder._id
     });
   } catch (error) {
     res.status(500).json({
       messages: "Failed To Fetch All Order",
-      error: error.message,
+      error: error.message
     });
   }
 };
@@ -140,13 +140,13 @@ export const getUserByIdOrder = async (req, res) => {
               quantity: i.quantity,
               total:
                 (i.quantity || 0) *
-                (i.variant?.price || i.menuItemId?.price || 0),
+                (i.variant?.price || i.menuItemId?.price || 0)
             })),
             subtotal,
             taxAmount,
             totalAmount,
-            paymentStatus: order.paymentStatus === "paid" ? "Paid" : "Pending",
-          },
+            paymentStatus: order.paymentStatus === "paid" ? "Paid" : "Pending"
+          }
         };
       }
 
@@ -157,18 +157,18 @@ export const getUserByIdOrder = async (req, res) => {
         subtotal,
         taxAmount,
         totalAmount,
-        user: order.userId,
+        user: order.userId
       };
     });
 
     res.status(200).json({
       message: "Fetched user orders successfully!",
-      data: formattedOrders,
+      data: formattedOrders
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to fetch user orders",
-      error: error.message,
+      error: error.message
     });
   }
 };
@@ -183,13 +183,13 @@ export const getRestaurantOrders = async (req, res) => {
     orderStatus,
     paymentStatus,
     startDate,
-    endDate,
+    endDate
   } = req.query;
 
   try {
     const query = { restaurantId };
 
-    // Search
+    // 🔍 Search
     if (typeof search === "string" && search.trim() !== "") {
       const orConditions = [
         { "deliveryAddress.FullName": { $regex: search, $options: "i" } },
@@ -197,15 +197,15 @@ export const getRestaurantOrders = async (req, res) => {
         { "deliveryAddress.City": { $regex: search, $options: "i" } },
         { paymentStatus: { $regex: search, $options: "i" } },
         { orderStatus: { $regex: search, $options: "i" } },
-        { paymentMethod: { $regex: search, $options: "i" } },
+        { paymentMethod: { $regex: search, $options: "i" } }
       ];
 
-      // If search looks like ObjectId
+      // 🔍 If search looks like ObjectId
       if (mongoose.Types.ObjectId.isValid(search)) {
         orConditions.push({ _id: mongoose.Types.ObjectId(search) });
       }
 
-      // If search is a valid date string (like "2025-08-20")
+      // 🔍 If search is a valid date string (like "2025-08-20")
       if (!isNaN(Date.parse(search))) {
         const date = new Date(search);
         const nextDay = new Date(date);
@@ -257,8 +257,8 @@ export const getRestaurantOrders = async (req, res) => {
           ...order.cartId?._doc,
           subtotal,
           taxAmount,
-          totalAmount,
-        },
+          totalAmount
+        }
       };
     });
 
@@ -271,18 +271,18 @@ export const getRestaurantOrders = async (req, res) => {
         orders: updatedOrders, // Renamed to be more descriptive
         total,
         totalPages: Math.ceil(total / limit),
-        currentPage: Number(page),
-      },
+        currentPage: Number(page)
+      }
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to fetch orders",
-      error: error.message,
+      error: error.message
     });
   }
 };
 
-// update pyment status
+// update ststus and send mail
 export const updateOrderAndPaymentStatus = async (req, res) => {
   const { orderId } = req.params;
   const { orderStatus, paymentStatus } = req.body;
@@ -292,7 +292,7 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
     "preparing",
     "on the way",
     "delivered",
-    "cancelled",
+    "cancelled"
   ];
 
   const validPaymentStatuses = ["pending", "paid"];
@@ -314,7 +314,7 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
       orderId,
       updateFields,
       { new: true }
-    ).populate("items.menuItemId", "name price"); // Populate menuItem data
+    ).populate("items.menuItemId", "name price");
 
     if (!updatedOrder) {
       return res.status(404).json({ message: "Order not found" });
@@ -322,8 +322,8 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
 
     // Send email only when order status is "delivered"
     if (orderStatus === "delivered") {
-      // Fetch customer email or Name
-      let customerEmail = updatedOrder.deliveryAddress?.Email;
+      // Fetch customer email (assuming linked via userId or deliveryAddress)
+      let customerEmail = updatedOrder.deliveryAddress?.email;
       let customerName = updatedOrder.deliveryAddress?.FullName;
 
       // If email is not in deliveryAddress, fetch from User model
@@ -337,20 +337,13 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
         console.warn("No customer email found for order:", orderId);
       } else {
         try {
-          // Generate simple text email with proper error handling
-          const textEmail = generateSimpleOrderReceipt(
+          // Send email with template
+          await sendOrderReceiptEmail(
             updatedOrder,
+            customerEmail,
             customerName
           );
-
-          // Send simple text email (no HTML)
-          await sendMail(
-            customerEmail,
-            `Order Receipt - Order #${
-              updatedOrder.orderNumber || updatedOrder._id
-            }`,
-            textEmail 
-          );
+          console.log("Order receipt email sent to:", customerEmail);
         } catch (emailError) {
           console.error(
             "Failed to send order receipt email:",
@@ -362,107 +355,14 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
 
     res.status(200).json({
       message: "Order and payment status updated successfully",
-      data: updatedOrder,
+      data: updatedOrder
     });
   } catch (error) {
     console.error("Failed to update order:", error.message);
     res.status(500).json({
       message: "Failed to update statuses",
-      error: error.message,
+      error: error.message
     });
-  }
-};
-
-// Fixed email generation function with proper error handling
-const generateSimpleOrderReceipt = (order, customerName) => {
-  try {
-    const {
-      orderNumber,
-      items,
-      totalAmount,
-      deliveryAddress,
-      orderStatus,
-      paymentStatus,
-      createdAt,
-    } = order;
-
-    // Safely calculate total amount if not provided
-    const calculatedTotal = totalAmount || calculateOrderTotal(items);
-
-    // Format items for text email
-    const itemsText = items
-      .map((item) => {
-        const itemName =
-          item.FullName ||
-          (item.menuItemId && item.menuItemId.name) ||
-          "Unknown Item";
-        const itemPrice = item.price || 0;
-        const itemQuantity = item.quantity || 1;
-        const itemTotal = itemPrice * itemQuantity;
-
-        return `${itemName} x ${itemQuantity} = $${itemTotal.toFixed(2)}`;
-      })
-      .join("\n");
-
-    return `
-      Order Receipt
-
-      Dear ${customerName || deliveryAddress?.FullName || "Customer"},
-
-      Thank you for your order! Below are the details of your order:
-
-      Order Details:
-      Order Number: ${orderNumber || order._id || "N/A"}
-      Order Date: ${
-        createdAt ? new Date(createdAt).toLocaleDateString() : "N/A"
-      }
-      Order Status: ${orderStatus || "N/A"}
-      Payment Status: ${paymentStatus || "N/A"}
-
-      Items:
-      ${itemsText || "No items found"}
-
-      Total Amount: ${formatCurrency(calculatedTotal || 0)}
-
-        Delivery Address:
-        ${deliveryAddress?.FullName || "N/A"}
-        ${deliveryAddress?.PhoneNumber || "N/A"}
-        ${deliveryAddress?.Address || "N/A"}
-        ${deliveryAddress?.City || "N/A"} ${deliveryAddress?.ZIPCode || "N/A"}
-
-      Thank you for choosing us!
-      Best regards,
-      Your Restaurant Team
-          `;
-  } catch (error) {
-    console.error("Error generating email receipt:", error);
-    // Fallback simple message if generation fails
-    return `
-    Order Receipt
-
-    Dear Customer,
-
-    Thank you for your order! Your order #${order._id} has been delivered.
-
-    Please contact us if you need more details about your order.
-
-    Best regards,
-    Your Restaurant Team
-        `;
-  }
-};
-
-// Helper function to calculate order total if not provided
-const calculateOrderTotal = (items) => {
-  try {
-    return items.reduce((total, item) => {
-      const itemPrice = item.price || 0;
-      const itemQuantity = item.quantity || 1;
-      return total + itemPrice * itemQuantity;
-    }, 0);
-  } catch (error) {
-    console.error("Error calculating order total:", error);
-    return 0;
   }
 };
 
@@ -488,19 +388,18 @@ export const updateUserOrder = async (req, res) => {
 
     res.status(200).json({
       message: "Order updated successfully",
-      data: order,
+      data: order
     });
-
   } catch (error) {
     res.status(500).json({
       message: "Failed to update the order",
-      error: error.message,
+      error: error.message
     });
   }
 };
 
 // Delete User Order
-export const cancelUserOrder = async (req, res) => {
+export const deleteUserOrder = async (req, res) => {
   const { userId, OrderId } = req.params;
 
   try {
@@ -512,27 +411,25 @@ export const cancelUserOrder = async (req, res) => {
       return res.status(400).json({ message: "Invalid Order ID" });
     }
 
-    // Instead of deleting → update status to "Cancelled"
-    const cancelledOrder = await OrderSche.findOneAndUpdate(
-      { _id: OrderId, userId },
-      { $set: { orderStatus: "cancelled", cancelledAt: new Date() } },
-      { new: true }
-    );
+    const deletedOrder = await OrderSche.findOneAndDelete({
+      _id: OrderId,
+      userId: userId
+    });
 
-    if (!cancelledOrder) {
+    if (!deletedOrder) {
       return res.status(404).json({
-        message: "Order not found or doesn't belong to this user",
+        message: "Order not found or doesn't belong to this user"
       });
     }
 
     res.status(200).json({
-      message: "Order cancelled successfully",
-      data: cancelledOrder,
+      message: "Order deleted successfully",
+      data: deletedOrder
     });
   } catch (error) {
     res.status(500).json({
-      message: "Failed to cancel user order",
-      error: error.message,
+      message: "Failed to delete user order",
+      error: error.message
     });
   }
 };
