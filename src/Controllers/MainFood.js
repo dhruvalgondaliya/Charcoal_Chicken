@@ -258,7 +258,7 @@ export const getRestaurantCategories = async (req, res) => {
       totalCategories,
       currentPage: pageNumber,
       totalPages: Math.ceil(totalCategories / limitNumber),
-      data: categoriesWithMenuName,
+      data: categoriesWithMenuName || [],
     });
   } catch (err) {
     res.status(500).json({

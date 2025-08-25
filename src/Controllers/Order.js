@@ -23,7 +23,7 @@ export const createOrder = async (req, res) => {
       return res.status(400).json({ message: "Cart is empty" });
     }
 
-    // Assuming all items in the cart are from the same restaurant
+    // Assuming all items in the cart
     const restaurantId = cart.items[0]?.menuItemId?.restaurantId;
     if (!restaurantId) {
       return res
@@ -39,7 +39,6 @@ export const createOrder = async (req, res) => {
       deliveryAddress,
       paymentMethod,
       paymentStatus: paymentMethod === "cod" ? "pending" : "paid",
-
       subTotal: cart.subTotal,
       taxAmount: cart.taxAmount,
       deliveryCharge: cart.deliveryCharge,
@@ -283,129 +282,6 @@ export const getRestaurantOrders = async (req, res) => {
   }
 };
 
-export const getCancelledOrdersByRestaurant = async (req, res) => {
-  const { restaurantId } = req.params;
-
-  try {
-    const cancelledOrders = await OrderSche.find({
-      restaurantId,
-      orderStatus: "cancelled",
-    })
-      .populate("userId", "name email")
-      .populate("items.menuItemId", "name price")
-      .sort({ createdAt: -1 });
-
-    res.json({ success: true, data: cancelledOrders });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-// Function to generate email HTML content
-const generateOrderReceiptEmail = (order, customerName) => {
-  const {
-    orderNumber,
-    items,
-    totalAmount,
-    deliveryAddress,
-    orderStatus,
-    paymentStatus,
-    createdAt,
-  } = order;
-
-  // Format items for email
-  const itemsHtml = items
-    .map(
-      (item) => `
-        <tr>
-          <td style="padding: 8px; border: 1px solid #ddd;">${
-            item.FullName || item.menuItemId?.name || "Unknown Item"
-          }</td>
-          <td style="padding: 8px; border: 1px solid #ddd;">${
-            item.quantity
-          }</td>
-          <td style="padding: 8px; border: 1px solid #ddd;">${(
-            item.price * item.quantity
-          ).toFixed(2)}</td>
-        </tr>
-      `
-    )
-    .join("");
-
-  return {
-    html: `
-      <html>
-        <body style="font-family: Arial, sans-serif; color: #333;">
-          <h2>Order Receipt</h2>
-          <p>Dear ${
-            customerName || deliveryAddress?.FullName || "Customer"
-          },</p>
-          <p>Thank you for your order! Below are the details of your order:</p>
-          <h3>Order Details</h3>
-          <p><strong>Order Number:</strong> ${orderNumber || order._id}</p>
-          <p><strong>Order Date:</strong> ${new Date(
-            createdAt
-          ).toLocaleDateString()}</p>
-          <p><strong>Order Status:</strong> ${orderStatus}</p>
-          <p><strong>Payment Status:</strong> ${paymentStatus}</p>
-          <h3>Items</h3>
-          <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-              <tr style="background-color: #f2f2f2;">
-                <th style="padding: 8px; border: 1px solid #ddd;">Item</th>
-                <th style="padding: 8px; border: 1px solid #ddd;">Quantity</th>
-                <th style="padding: 8px; border: 1px solid #ddd;">Price</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${itemsHtml}
-            </tbody>
-          </table>
-          <h3>Total Amount: $${totalAmount.toFixed(2)}</h3>
-          <h3>Delivery Address</h3>
-          <p>${deliveryAddress?.FullName || "N/A"}<br />
-             ${deliveryAddress?.PhoneNumber || "N/A"}</p>
-          <p>Thank you for choosing us!</p>
-          <p>Best regards,<br />Your Restaurant Team</p>
-        </body>
-      </html>
-    `,
-    text: `
-      Order Receipt
-
-      Dear ${customerName || deliveryAddress?.FullName || "Customer"},
-
-      Thank you for your order! Below are the details of your order:
-
-      Order Details
-      Order Number: ${orderNumber || order._id}
-      Order Date: ${new Date(createdAt).toLocaleDateString()}
-      Order Status: ${orderStatus}
-      Payment Status: ${paymentStatus}
-
-      Items:
-      ${items
-        .map(
-          (item) =>
-            `- ${item.FullName || item.menuItemId?.name || "Unknown Item"} x ${
-              item.quantity
-            } = $${(item.price * item.quantity).toFixed(2)}`
-        )
-        .join("\n")}
-
-      Total Amount: $${totalAmount.toFixed(2)}
-
-      Delivery Address:
-      ${deliveryAddress?.FullName || "N/A"}
-      ${deliveryAddress?.PhoneNumber || "N/A"}
-
-      Thank you for choosing us!
-      Best regards,
-      Your Restaurant Team
-    `,
-  };
-};
-
 // update pyment status
 export const updateOrderAndPaymentStatus = async (req, res) => {
   const { orderId } = req.params;
@@ -446,7 +322,7 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
 
     // Send email only when order status is "delivered"
     if (orderStatus === "delivered") {
-      // Fetch customer email (assuming linked via userId or deliveryAddress)
+      // Fetch customer email or Name
       let customerEmail = updatedOrder.deliveryAddress?.Email;
       let customerName = updatedOrder.deliveryAddress?.FullName;
 
@@ -473,15 +349,13 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
             `Order Receipt - Order #${
               updatedOrder.orderNumber || updatedOrder._id
             }`,
-            textEmail // Only text content
+            textEmail 
           );
-          console.log("Order receipt email sent to:", customerEmail);
         } catch (emailError) {
           console.error(
             "Failed to send order receipt email:",
             emailError.message
           );
-          // Continue with the order update even if email fails
         }
       }
     }
@@ -616,6 +490,7 @@ export const updateUserOrder = async (req, res) => {
       message: "Order updated successfully",
       data: order,
     });
+
   } catch (error) {
     res.status(500).json({
       message: "Failed to update the order",

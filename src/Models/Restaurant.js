@@ -14,7 +14,7 @@ const RestaurantSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    password: {
+    Password: {
       type: String,
       required: true,
     },
@@ -26,8 +26,18 @@ const RestaurantSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+
     cuisines: [{ type: String, required: true }],
-    isApproved: { type: Boolean, default: false },
+    status: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
+    },
+    role: {
+      type: String,
+      enum: ["admin", "restaurant"],
+      default: "restaurant",
+    },
     reviews: [
       {
         type: mongoose.Schema.Types.ObjectId,

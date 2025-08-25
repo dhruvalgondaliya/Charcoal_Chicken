@@ -3,7 +3,6 @@ import {
   createOrder,
   cancelUserOrder,
   getAllOrder,
-  getCancelledOrdersByRestaurant,
   getRestaurantOrders,
   getUserByIdOrder,
   updateOrderAndPaymentStatus,
@@ -20,7 +19,6 @@ Order_Routes.post("/createOrder/:userId/:cartId", Auth, createOrder);
 Order_Routes.get("/getAllOrder", Auth, getAllOrder);
 Order_Routes.get("/userOrder/:userId", Auth, getUserByIdOrder);
 Order_Routes.get("/restaurantOrders/:restaurantId", Auth, getRestaurantOrders);
-Order_Routes.get("/cancelled/:restaurantId", getCancelledOrdersByRestaurant);
 
 // Order Edit/Delete Routes
 Order_Routes.put("/update-status/:orderId", Auth, updateOrderAndPaymentStatus);

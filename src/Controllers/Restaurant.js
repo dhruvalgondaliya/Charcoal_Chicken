@@ -3,7 +3,8 @@ import jwt from "jsonwebtoken";
 
 // Create Restaurant
 export const createRestaurant = async (req, res) => {
-  const { name, ownerName, email, password, phone, address, cuisines } = req.body;
+  const { name, ownerName, email, Password, phone, address, cuisines } =
+    req.body;
   try {
     const existingResto = await restaurant.findOne({ email: req.body.email });
 
@@ -15,7 +16,7 @@ export const createRestaurant = async (req, res) => {
       name,
       ownerName,
       email,
-      password,
+      Password,
       phone,
       address,
       cuisines,
@@ -45,14 +46,14 @@ export const loginRestaurant = async (req, res) => {
       return res.status(404).json({ message: "Restaurant not found" });
     }
 
-    if (resto.password !== password) {
+    if (resto.Password !== password) {
       return res.status(401).json({
         message: "Invalid Email or Password",
       });
     }
 
     const token = jwt.sign(
-      { id: resto._id, role: "restaurant" },
+      { id: resto._id, role: resto.role },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -64,6 +65,7 @@ export const loginRestaurant = async (req, res) => {
         id: resto._id,
         name: resto.name,
         email: resto.email,
+        role: resto.role,
       },
     });
   } catch (error) {
@@ -74,20 +76,35 @@ export const loginRestaurant = async (req, res) => {
   }
 };
 
-// GetAll Restaurant
-export const getAllRestaurunt = async (req, res) => {
-  try {
-    const getResto = await restaurant.find().populate("reviews");
+// // GetAll Restaurant
+// export const getAllRestaurunt = async (req, res) => {
+//   try {
+//     const getResto = await restaurant.find().populate("reviews");
 
-    res.status(200).json({
-      messaage: "All Restaurant Fetch SuccessFully!",
-      TotalData: getResto.length,
-      data: getResto,
-    });
-  } catch (err) {
-    res
-      .status(500)
-      .json({ message: "Failed To Fetch Restaurant", error: err.message });
+//     res.status(200).json({
+//       messaage: "All Restaurant Fetch SuccessFully!",
+//       TotalData: getResto.length,
+//       data: getResto,
+//     });
+//   } catch (err) {
+//     res
+//       .status(500)
+//       .json({ message: "Failed To Fetch Restaurant", error: err.message });
+//   }
+// };
+
+// get all Restaurants for admin fetch
+export const getAllRestaurants = async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Access denied." });
+    }
+
+    const restaurants = await restaurant.find().select("-Password");
+    res.status(200).json(restaurants);
+  } catch (error) {
+    console.error("Error fetching restaurants:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -109,6 +126,54 @@ export const RestoFindById = async (req, res) => {
       message: "Failed To Fetch Restaurant By Id ",
       error: err.message,
     });
+  }
+};
+
+// Approve restaurant
+export const approveRestaurant = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const resto = await restaurant.findByIdAndUpdate(
+      id,
+      { status: "approved" },
+      { new: true }
+    );
+
+    if (!resto) {
+      return res.status(404).json({ message: "Restaurant not found" });
+    }
+
+    res
+      .status(200)
+      .json({ message: "Restaurant approved successfully", resto });
+  } catch (error) {
+    console.error("Error approving restaurant:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Reject restaurant
+export const rejectRestaurant = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const resto = await restaurant.findByIdAndUpdate(
+      id,
+      { status: "rejected" },
+      { new: true }
+    );
+
+    if (!resto) {
+      return res.status(404).json({ message: "Restaurant not found" });
+    }
+
+    res
+      .status(200)
+      .json({ message: "Restaurant rejected successfully", resto });
+  } catch (error) {
+    console.error("Error rejecting restaurant:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
