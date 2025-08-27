@@ -92,8 +92,11 @@ export const loginUser = async (req, res) => {
   }
 };
 
-// getAll User
+// getAll User by admin
 export const getAllUser = async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Access denied." });
+  }
   try {
     const getuser = await User.find();
 

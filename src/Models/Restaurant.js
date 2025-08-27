@@ -38,6 +38,7 @@ const RestaurantSchema = new mongoose.Schema(
       enum: ["admin", "restaurant"],
       default: "restaurant",
     },
+    notified: { type: Boolean, default: false },
     reviews: [
       {
         type: mongoose.Schema.Types.ObjectId,
