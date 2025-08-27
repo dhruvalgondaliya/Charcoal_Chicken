@@ -106,8 +106,40 @@ export const getAllRestaurants = async (req, res) => {
       return res.status(403).json({ message: "Access denied." });
     }
 
-    const restaurants = await restaurant.find().select("-Password");
-    res.status(200).json(restaurants);
+    const { page = 1, limit = 5, search = "", status } = req.query;
+
+    const query = {};
+
+    // Search by name or email
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // Status filter
+    if (status) {
+      query.status = status;
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [restaurants, total] = await Promise.all([
+      restaurant
+        .find(query)
+        .skip(skip)
+        .limit(parseInt(limit))
+        .select("-Password"),
+      restaurant.countDocuments(query),
+    ]);
+
+    res.status(200).json({
+      restaurants,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page),
+      total,
+    });
   } catch (error) {
     console.error("Error fetching restaurants:", error);
     res.status(500).json({ message: "Server error" });

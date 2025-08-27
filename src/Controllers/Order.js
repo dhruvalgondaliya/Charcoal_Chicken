@@ -42,7 +42,7 @@ export const createOrder = async (req, res) => {
       subTotal: cart.subTotal,
       taxAmount: cart.taxAmount,
       deliveryCharge: cart.deliveryCharge,
-      totalAmount: cart.totalAmount
+      totalAmount: cart.totalAmount,
     });
 
     // Clear cart after placing order
@@ -51,12 +51,12 @@ export const createOrder = async (req, res) => {
 
     res.status(201).json({
       message: "Order placed successfully",
-      data: order
+      data: order,
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to place order",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -73,12 +73,12 @@ export const getAllOrder = async (req, res) => {
       messages: "All Order Fetch SuccessFully!",
       totalOrder: orders.length,
       data: orders,
-      orderId: newOrder._id
+      orderId: newOrder._id,
     });
   } catch (error) {
     res.status(500).json({
       messages: "Failed To Fetch All Order",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -140,13 +140,13 @@ export const getUserByIdOrder = async (req, res) => {
               quantity: i.quantity,
               total:
                 (i.quantity || 0) *
-                (i.variant?.price || i.menuItemId?.price || 0)
+                (i.variant?.price || i.menuItemId?.price || 0),
             })),
             subtotal,
             taxAmount,
             totalAmount,
-            paymentStatus: order.paymentStatus === "paid" ? "Paid" : "Pending"
-          }
+            paymentStatus: order.paymentStatus === "paid" ? "Paid" : "Pending",
+          },
         };
       }
 
@@ -157,18 +157,18 @@ export const getUserByIdOrder = async (req, res) => {
         subtotal,
         taxAmount,
         totalAmount,
-        user: order.userId
+        user: order.userId,
       };
     });
 
     res.status(200).json({
       message: "Fetched user orders successfully!",
-      data: formattedOrders
+      data: formattedOrders,
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to fetch user orders",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -183,13 +183,13 @@ export const getRestaurantOrders = async (req, res) => {
     orderStatus,
     paymentStatus,
     startDate,
-    endDate
+    endDate,
   } = req.query;
 
   try {
     const query = { restaurantId };
 
-    // 🔍 Search
+    // Search
     if (typeof search === "string" && search.trim() !== "") {
       const orConditions = [
         { "deliveryAddress.FullName": { $regex: search, $options: "i" } },
@@ -197,15 +197,15 @@ export const getRestaurantOrders = async (req, res) => {
         { "deliveryAddress.City": { $regex: search, $options: "i" } },
         { paymentStatus: { $regex: search, $options: "i" } },
         { orderStatus: { $regex: search, $options: "i" } },
-        { paymentMethod: { $regex: search, $options: "i" } }
+        { paymentMethod: { $regex: search, $options: "i" } },
       ];
 
-      // 🔍 If search looks like ObjectId
+      // If search looks like ObjectId
       if (mongoose.Types.ObjectId.isValid(search)) {
         orConditions.push({ _id: mongoose.Types.ObjectId(search) });
       }
 
-      // 🔍 If search is a valid date string (like "2025-08-20")
+      // If search is a valid date string (like "2025-08-20")
       if (!isNaN(Date.parse(search))) {
         const date = new Date(search);
         const nextDay = new Date(date);
@@ -220,7 +220,7 @@ export const getRestaurantOrders = async (req, res) => {
     if (orderStatus) query.orderStatus = orderStatus;
     if (paymentStatus) query.paymentStatus = paymentStatus;
 
-    // 📅 Date filter
+    // Date filter
     if (startDate && !isNaN(Date.parse(startDate))) {
       query.createdAt = { ...query.createdAt, $gte: new Date(startDate) };
     }
@@ -238,7 +238,7 @@ export const getRestaurantOrders = async (req, res) => {
       .limit(parseInt(limit))
       .sort({ createdAt: -1 });
 
-    // ✅ Build a new array with totalAmount
+    // Build a new array with totalAmount
     const updatedOrders = orders.map((order) => {
       const subtotal =
         order.items?.reduce((sum, i) => {
@@ -257,8 +257,8 @@ export const getRestaurantOrders = async (req, res) => {
           ...order.cartId?._doc,
           subtotal,
           taxAmount,
-          totalAmount
-        }
+          totalAmount,
+        },
       };
     });
 
@@ -268,16 +268,16 @@ export const getRestaurantOrders = async (req, res) => {
       success: true,
       message: "Orders fetched successfully",
       data: {
-        orders: updatedOrders, // Renamed to be more descriptive
+        orders: updatedOrders,
         total,
         totalPages: Math.ceil(total / limit),
-        currentPage: Number(page)
-      }
+        currentPage: Number(page),
+      },
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to fetch orders",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -292,7 +292,7 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
     "preparing",
     "on the way",
     "delivered",
-    "cancelled"
+    "cancelled",
   ];
 
   const validPaymentStatuses = ["pending", "paid"];
@@ -355,13 +355,13 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
 
     res.status(200).json({
       message: "Order and payment status updated successfully",
-      data: updatedOrder
+      data: updatedOrder,
     });
   } catch (error) {
     console.error("Failed to update order:", error.message);
     res.status(500).json({
       message: "Failed to update statuses",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -388,12 +388,12 @@ export const updateUserOrder = async (req, res) => {
 
     res.status(200).json({
       message: "Order updated successfully",
-      data: order
+      data: order,
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to update the order",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -413,23 +413,23 @@ export const deleteUserOrder = async (req, res) => {
 
     const deletedOrder = await OrderSche.findOneAndDelete({
       _id: OrderId,
-      userId: userId
+      userId: userId,
     });
 
     if (!deletedOrder) {
       return res.status(404).json({
-        message: "Order not found or doesn't belong to this user"
+        message: "Order not found or doesn't belong to this user",
       });
     }
 
     res.status(200).json({
       message: "Order deleted successfully",
-      data: deletedOrder
+      data: deletedOrder,
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to delete user order",
-      error: error.message
+      error: error.message,
     });
   }
 };
