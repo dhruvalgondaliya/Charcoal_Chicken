@@ -28,11 +28,13 @@ export const createRestaurant = async (req, res) => {
     });
 
     res.status(201).json({
+      success: true,
       message: "Restaurant Created Successfully!",
       data: newResto,
     });
   } catch (error) {
     res.status(500).json({
+      success: false,
       message: "Failed to Create Restaurant",
       error: error.message,
     });
@@ -41,7 +43,7 @@ export const createRestaurant = async (req, res) => {
 
 // login for Restaurant
 export const loginRestaurant = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, Password } = req.body;
 
   try {
     const resto = await restaurant.findOne({ email: email });
@@ -65,7 +67,7 @@ export const loginRestaurant = async (req, res) => {
     }
 
     // ✅ Check password
-    if (resto.Password !== password) {
+    if (resto.Password !== Password) {
       return res.status(401).json({
         message: "Invalid Email or Password",
       });
@@ -109,6 +111,24 @@ export const getAllRestaurants = async (req, res) => {
   } catch (error) {
     console.error("Error fetching restaurants:", error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Notification api
+export const getnotification = async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Access denied." });
+  }
+
+  try {
+    // return pending restaurants
+    const pendingUsers = await restaurant
+      .find({ status: "pending", notified: { $ne: true } })
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, data: pendingUsers });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -199,6 +219,33 @@ export const rejectRestaurant = async (req, res) => {
   }
 };
 
+// notification read Status Update api
+export const markAsNotified = async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Access denied." });
+  }
+
+  const { id } = req.params;
+
+  try {
+    const updated = await restaurant.findByIdAndUpdate(
+      id,
+      { $set: { notified: true } },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Restaurant not found" });
+    }
+
+    res.json({ success: true, data: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // Update Restaurant
 export const updateRestaurant = async (req, res) => {
   try {
@@ -224,23 +271,23 @@ export const updateRestaurant = async (req, res) => {
 };
 
 // Delete Restaurant
-export const deleteRestaurant = async (req, res) => {
-  try {
-    const Resto = await restaurant.findByIdAndDelete(req.params.id);
+// export const deleteRestaurant = async (req, res) => {
+//   try {
+//     const Resto = await restaurant.findByIdAndDelete(req.params.id);
 
-    if (!Resto) {
-      return res.status(404).json({
-        message: "Restaurant Not Found",
-      });
-    }
-    res.status(200).json({
-      message: "Restaurant Delete SuccessFully!",
-      data: Resto,
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: "Failed To Delete Restaurant",
-      error: error.message,
-    });
-  }
-};
+//     if (!Resto) {
+//       return res.status(404).json({
+//         message: "Restaurant Not Found",
+//       });
+//     }
+//     res.status(200).json({
+//       message: "Restaurant Delete SuccessFully!",
+//       data: Resto,
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       message: "Failed To Delete Restaurant",
+//       error: error.message,
+//     });
+//   }
+// };
