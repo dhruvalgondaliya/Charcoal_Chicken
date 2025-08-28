@@ -366,10 +366,9 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
   }
 };
 
-// Update User Order
-export const updateUserOrder = async (req, res) => {
+// cancel User Order
+export const cancelUserOrder = async (req, res) => {
   const { userId, OrderId } = req.params;
-  const update = req.body;
 
   try {
     if (!mongoose.Types.ObjectId.isValid(userId)) {
@@ -380,55 +379,28 @@ export const updateUserOrder = async (req, res) => {
       return res.status(400).json({ message: "Invalid Order ID" });
     }
 
-    const order = await OrderSche.findOneAndUpdate(
-      { userId: userId, _id: OrderId },
-      update,
-      { new: true, runValidators: true }
+    // Instead of deleting → update status to "Cancelled"
+    const cancelledOrder = await OrderSche.findOneAndUpdate(
+      { _id: OrderId, userId },
+      { $set: { orderStatus: "cancelled", cancelledAt: new Date() } },
+      { new: true }
     );
 
-    res.status(200).json({
-      message: "Order updated successfully",
-      data: order,
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: "Failed to update the order",
-      error: error.message,
-    });
-  }
-};
-
-// Delete User Order
-export const deleteUserOrder = async (req, res) => {
-  const { userId, OrderId } = req.params;
-
-  try {
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: "Invalid User ID" });
-    }
-
-    if (!mongoose.Types.ObjectId.isValid(OrderId)) {
-      return res.status(400).json({ message: "Invalid Order ID" });
-    }
-
-    const deletedOrder = await OrderSche.findOneAndDelete({
-      _id: OrderId,
-      userId: userId,
-    });
-
-    if (!deletedOrder) {
+    if (!cancelledOrder) {
       return res.status(404).json({
         message: "Order not found or doesn't belong to this user",
       });
     }
 
     res.status(200).json({
-      message: "Order deleted successfully",
-      data: deletedOrder,
+      success: true,
+      message: "Order cancelled successfully",
+      data: cancelledOrder,
     });
   } catch (error) {
     res.status(500).json({
-      message: "Failed to delete user order",
+      success: false,
+      message: "Failed to cancel user order",
       error: error.message,
     });
   }

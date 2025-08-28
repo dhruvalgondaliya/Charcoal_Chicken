@@ -303,23 +303,23 @@ export const updateRestaurant = async (req, res) => {
 };
 
 // Delete Restaurant
-// export const deleteRestaurant = async (req, res) => {
-//   try {
-//     const Resto = await restaurant.findByIdAndDelete(req.params.id);
+export const deleteRestaurant = async (req, res) => {
+  try {
+    const Resto = await restaurant.findByIdAndDelete(req.params.id);
 
-//     if (!Resto) {
-//       return res.status(404).json({
-//         message: "Restaurant Not Found",
-//       });
-//     }
-//     res.status(200).json({
-//       message: "Restaurant Delete SuccessFully!",
-//       data: Resto,
-//     });
-//   } catch (error) {
-//     res.status(500).json({
-//       message: "Failed To Delete Restaurant",
-//       error: error.message,
-//     });
-//   }
-// };
+    if (!Resto) {
+      return res.status(404).json({
+        message: "Restaurant Not Found",
+      });
+    }
+    res.status(200).json({
+      message: "Restaurant Delete SuccessFully!",
+      data: Resto,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed To Delete Restaurant",
+      error: error.message,
+    });
+  }
+};
