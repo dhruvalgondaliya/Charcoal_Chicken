@@ -234,7 +234,7 @@ export const getRestaurantCategories = async (req, res) => {
 
     // Fetch paginated categories
     const categories = await CategorySch.find(query)
-      .populate("menuId", "title") 
+      .populate("menuId", "title")
       .populate("items")
       .skip(skip)
       .limit(limitNumber);

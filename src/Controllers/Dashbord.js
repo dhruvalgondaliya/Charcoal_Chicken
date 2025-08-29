@@ -1,5 +1,5 @@
-import MenuSche from "../models/Menu.js";
-import CategorySche from "../models/Category.js";
+import MenuSche from "../Models/Menu.js";
+import CategorySche from "../Models/Category.js";
 import ItemSche from "../Models/FoodItems.js";
 import OrderSche from "../Models/OrderSch.js";
 import restaurant from "../Models/Restaurant.js";
@@ -40,7 +40,7 @@ export const getRestaurantStats = async (req, res) => {
 export const getDashboardStats = async (req, res) => {
   try {
     // Count totals in parallel for better performance
-    const [totalMenus, totalCategories, totalItems, totalOrders] =
+    const [totalMenus, totalFoodItems, totalItems, totalOrders] =
       await Promise.all([
         MenuSche.countDocuments(),
         CategorySche.countDocuments(),
@@ -254,3 +254,64 @@ export const getTopSaleItems = async (req, res) => {
   }
 };
 
+// Get Orders by Category (Donut/Pie Chart Data)
+export const getOrdersByCategory = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+
+    const data = await OrderSche.aggregate([
+      {
+        $match: {
+          restaurantId: new mongoose.Types.ObjectId(restaurantId),
+        },
+      },
+      { $unwind: "$items" },
+
+      // lookup food item details
+      {
+        $lookup: {
+          from: "fooditems", 
+          localField: "items.menuItemId",
+          foreignField: "_id",
+          as: "foodItem",
+        },
+      },
+      { $unwind: "$foodItem" },
+
+      // lookup category from foodItem
+      {
+        $lookup: {
+          from: "categories",
+          localField: "foodItem._id",
+          foreignField: "items",
+          as: "category",
+        },
+      },
+      { $unwind: "$category" },
+
+      // group by category
+      {
+        $group: {
+          _id: "$category.name",
+          totalOrders: { $sum: "$items.quantity" },
+          totalRevenue: {
+            $sum: { $multiply: ["$items.quantity", "$items.price"] },
+          },
+        },
+      },
+      { $sort: { totalOrders: -1 } },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: "Orders grouped by category",
+      data,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
