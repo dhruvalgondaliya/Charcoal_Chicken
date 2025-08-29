@@ -12,7 +12,6 @@ export const UserRegistration = async (req, res) => {
     DeliveryAddress,
     gender,
     DietaryPreferences,
-    role,
   } = req.body;
 
   const existingUser = await User.findOne({ Email: Email });
@@ -97,18 +96,49 @@ export const getAllUser = async (req, res) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Access denied." });
   }
+
   try {
-    const getuser = await User.find();
+    // Query params
+    const { page = 1, limit = 10, search = "", status = "" } = req.query;
+
+    // Filters
+    const query = {};
+
+    // Search by userName, email, phone etc.
+    if (search) {
+      query.$or = [
+        { userName: { $regex: search, $options: "i" } },
+        { Email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // Filter by status if passed
+    if (status) {
+      query.status = status;
+    }
+
+    // Count total
+    const totalUsers = await User.countDocuments(query);
+
+    // Apply pagination
+    const users = await User.find(query)
+      .select("-password")
+      .skip((page - 1) * limit)
+      .limit(Number(limit))
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
-      messages: "All User Fetch SuccessFully",
-      totalUser: getuser.length,
-      data: getuser,
+      message: "Users fetched successfully",
+      totalUsers,
+      totalPages: Math.ceil(totalUsers / limit),
+      currentPage: Number(page),
+      data: users,
     });
   } catch (error) {
+    console.error("Error fetching users:", error);
     res.status(500).json({
-      messages: "Failed to Fetch All User",
-      error: err.message,
+      message: "Failed to fetch users",
+      error: error.message,
     });
   }
 };

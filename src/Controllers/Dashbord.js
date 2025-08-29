@@ -3,37 +3,9 @@ import CategorySche from "../models/Category.js";
 import ItemSche from "../Models/FoodItems.js";
 import OrderSche from "../Models/OrderSch.js";
 import restaurant from "../Models/Restaurant.js";
+import mongoose from "mongoose";
 
-export const getDashboardStats = async (req, res) => {
-  try {
-    // Count totals in parallel for better performance
-    const [totalMenus, totalCategories, totalItems, totalOrders] =
-      await Promise.all([
-        MenuSche.countDocuments(),
-        CategorySche.countDocuments(),
-        ItemSche.countDocuments(),
-        OrderSche.countDocuments(),
-      ]);
-
-    res.status(200).json({
-      success: true,
-      message: "Dashboard stats fetched successfully",
-      data: {
-        totalMenus,
-        totalCategories,
-        totalItems,
-        totalOrders,  
-      },
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch dashboard stats",
-      error: error.message,
-    });
-  }
-};
-
+// Main Admin Api logic
 export const getRestaurantStats = async (req, res) => {
   try {
     // Count each status separately
@@ -62,3 +34,223 @@ export const getRestaurantStats = async (req, res) => {
     });
   }
 };
+
+// =============================== Restaurant Admin Api Logic For Dashboard ====================
+
+export const getDashboardStats = async (req, res) => {
+  try {
+    // Count totals in parallel for better performance
+    const [totalMenus, totalCategories, totalItems, totalOrders] =
+      await Promise.all([
+        MenuSche.countDocuments(),
+        CategorySche.countDocuments(),
+        ItemSche.countDocuments(),
+        OrderSche.countDocuments(),
+      ]);
+
+    res.status(200).json({
+      success: true,
+      message: "Dashboard stats fetched successfully",
+      data: {
+        totalMenus,
+        totalCategories,
+        totalItems,
+        totalOrders,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch dashboard stats",
+      error: error.message,
+    });
+  }
+};
+
+// get Sale Chart IN Restaurant Admin show
+export const getRestaurantSalesTrends = async (req, res) => {
+  const { restaurantId } = req.params;
+  const { range = "daily", startDate, endDate } = req.query;
+
+  try {
+    if (!mongoose.Types.ObjectId.isValid(restaurantId)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid restaurantId" });
+    }
+
+    const match = { restaurantId: new mongoose.Types.ObjectId(restaurantId) };
+
+    // 📅 Date filter
+    if (startDate || endDate) {
+      match.createdAt = {};
+      if (startDate) match.createdAt.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        match.createdAt.$lte = end;
+      }
+    }
+
+    // 📊 GroupId & sortStage
+    let groupId, sortStage;
+    if (range === "monthly") {
+      groupId = {
+        year: { $year: "$createdAt" },
+        month: { $month: "$createdAt" },
+      };
+      sortStage = { "_id.year": 1, "_id.month": 1 };
+    } else if (range === "weekly") {
+      groupId = {
+        year: { $year: "$createdAt" },
+        week: { $week: "$createdAt" },
+      };
+      sortStage = { "_id.year": 1, "_id.week": 1 };
+    } else {
+      // default daily
+      groupId = {
+        year: { $year: "$createdAt" },
+        month: { $month: "$createdAt" },
+        day: { $dayOfMonth: "$createdAt" },
+      };
+      sortStage = { "_id.year": 1, "_id.month": 1, "_id.day": 1 };
+    }
+
+    const salesData = await OrderSche.aggregate([
+      { $match: match },
+      { $unwind: "$items" },
+      {
+        $project: {
+          createdAt: 1,
+          totalAmount: {
+            $multiply: [
+              {
+                $ifNull: [
+                  "$items.variant.price",
+                  { $ifNull: ["$items.menuItemId.price", 0] },
+                ],
+              },
+              { $ifNull: ["$items.quantity", 0] },
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: groupId,
+          totalSales: { $sum: "$totalAmount" },
+          orders: { $sum: 1 },
+        },
+      },
+      { $sort: sortStage },
+    ]);
+
+    res.json({ success: true, data: salesData });
+  } catch (err) {
+    console.error("Error in sales-trends:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// Payment Chart
+export const getPaymentMethodStats = async (req, res) => {
+  const { restaurantId } = req.params;
+  const { startDate, endDate } = req.query;
+
+  try {
+    const match = {
+      restaurantId: new mongoose.Types.ObjectId(restaurantId),
+    };
+
+    // Optional date filter
+    if (startDate && !isNaN(Date.parse(startDate))) {
+      match.createdAt = { ...match.createdAt, $gte: new Date(startDate) };
+    }
+    if (endDate && !isNaN(Date.parse(endDate))) {
+      match.createdAt = { ...match.createdAt, $lte: new Date(endDate) };
+    }
+
+    const stats = await OrderSche.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: "$paymentMethod",
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          paymentMethod: "$_id",
+          count: 1,
+          _id: 0,
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: "Payment method stats fetched successfully",
+      data: stats,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to fetch payment method stats",
+      error: error.message,
+    });
+  }
+};
+
+// top sale Item APi
+export const getTopSaleItems = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+
+    if (!restaurantId) {
+      return res.status(400).json({ message: "restaurantId is required" });
+    }
+
+    const topItems = await OrderSche.aggregate([
+      {
+        $match: {
+          restaurantId: new mongoose.Types.ObjectId(restaurantId),
+          orderStatus: { $ne: "cancelled" },
+        },
+      },
+      { $unwind: "$items" },
+      {
+        $group: {
+          _id: "$items.menuItemId",
+          totalSold: { $sum: "$items.quantity" },
+        },
+      },
+      { $sort: { totalSold: -1 } },
+      {
+        $lookup: {
+          from: "fooditems",
+          localField: "_id",
+          foreignField: "_id",
+          as: "item",
+        },
+      },
+      { $unwind: "$item" },
+      {
+        $project: {
+          _id: 0,
+          itemId: "$item._id",
+          name: "$item.name",
+          image: "$item.image",
+          totalSold: 1,
+        },
+      },
+    ]);
+
+    res.json({
+      message: "top selling Item Fetch SuccessFully",
+      data: topItems,
+    });
+  } catch (error) {
+    console.error("Error fetching top-selling items:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+

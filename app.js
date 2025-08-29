@@ -54,8 +54,6 @@ app.use("/review", Review_Routes);
 app.use("/cart", Cart_Routes);
 app.use("/userProfile", UserProfile_Routes);
 
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-
-
