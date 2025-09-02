@@ -40,7 +40,7 @@ export const getRestaurantStats = async (req, res) => {
 export const getDashboardStats = async (req, res) => {
   try {
     // Count totals in parallel for better performance
-    const [totalMenus, totalFoodItems, totalItems, totalOrders] =
+    const [totalMenus, totalCategories, totalItems, totalOrders] =
       await Promise.all([
         MenuSche.countDocuments(),
         CategorySche.countDocuments(),
