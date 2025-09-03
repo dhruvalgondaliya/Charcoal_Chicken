@@ -71,12 +71,12 @@ export const addToCart = async (req, res) => {
       // Check if menu item ID matches
       if (item.menuItemId.toString() !== menuItemId) return false;
       
-      // Check if variant matches (both null or same ID)
+      // Check if variant matches
       const itemVariantId = item.variant?._id?.toString() || null;
       const newVariantId = selectedVariant._id?.toString() || null;
       if (itemVariantId !== newVariantId) return false;
       
-      // Check if addons match (same length and same IDs)
+      // Check if addons match 
       if (item.addOns.length !== validAddOns.length) return false;
       
       const itemAddOnIds = item.addOns.map(a => a._id.toString()).sort();

@@ -1,9 +1,9 @@
+import mongoose from "mongoose";
 import MenuSche from "../Models/Menu.js";
 import CategorySche from "../Models/Category.js";
 import ItemSche from "../Models/FoodItems.js";
 import OrderSche from "../Models/OrderSch.js";
 import restaurant from "../Models/Restaurant.js";
-import mongoose from "mongoose";
 
 // Main Admin Api logic
 export const getRestaurantStats = async (req, res) => {
@@ -36,7 +36,6 @@ export const getRestaurantStats = async (req, res) => {
 };
 
 // =============================== Restaurant Admin Api Logic For Dashboard ====================
-
 export const getDashboardStats = async (req, res) => {
   try {
     // Count totals in parallel for better performance
@@ -81,7 +80,10 @@ export const getRestaurantSalesTrends = async (req, res) => {
 
     const match = { restaurantId: new mongoose.Types.ObjectId(restaurantId) };
 
-    // 📅 Date filter
+    // Exclude cancelled orders
+    match.orderStatus  = { $ne: "cancelled" };
+
+    // Date filter
     if (startDate || endDate) {
       match.createdAt = {};
       if (startDate) match.createdAt.$gte = new Date(startDate);
@@ -91,7 +93,6 @@ export const getRestaurantSalesTrends = async (req, res) => {
         match.createdAt.$lte = end;
       }
     }
-
     // 📊 GroupId & sortStage
     let groupId, sortStage;
     if (range === "monthly") {
@@ -270,7 +271,7 @@ export const getOrdersByCategory = async (req, res) => {
       // lookup food item details
       {
         $lookup: {
-          from: "fooditems", 
+          from: "fooditems",
           localField: "items.menuItemId",
           foreignField: "_id",
           as: "foodItem",
