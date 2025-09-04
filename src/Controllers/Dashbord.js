@@ -4,8 +4,9 @@ import CategorySche from "../Models/Category.js";
 import ItemSche from "../Models/FoodItems.js";
 import OrderSche from "../Models/OrderSch.js";
 import restaurant from "../Models/Restaurant.js";
+import User from "../Models/User.js";
 
-// Main Admin Api logic
+// Super  Admin Api logic
 export const getRestaurantStats = async (req, res) => {
   try {
     // Count each status separately
@@ -32,6 +33,42 @@ export const getRestaurantStats = async (req, res) => {
       message: "Failed to fetch restaurant stats",
       error: error.message,
     });
+  }
+};
+
+// get All User
+export const getAllNewUSer = async (req, res) => {
+  try {
+    const { range = "day" } = req.query;
+
+    let groupFormat;
+    if (range === "day") {
+      groupFormat = {
+        year: { $year: "$createdAt" },
+        month: { $month: "$createdAt" },
+        day: { $dayOfMonth: "$createdAt" },
+      };
+    } else if (range === "week") {
+      groupFormat = {
+        year: { $year: "$createdAt" },
+        week: { $week: "$createdAt" },
+      };
+    } else if (range === "month") {
+      groupFormat = {
+        year: { $year: "$createdAt" },
+        month: { $month: "$createdAt" },
+      };
+    }
+
+    const result = await User.aggregate([
+      { $group: { _id: groupFormat, count: { $sum: 1 } } },
+      { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
+    ]);
+
+    res.json({ success: true, data: result });
+  } catch (err) {
+    console.error("Error fetching new users:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -81,7 +118,7 @@ export const getRestaurantSalesTrends = async (req, res) => {
     const match = { restaurantId: new mongoose.Types.ObjectId(restaurantId) };
 
     // Exclude cancelled orders
-    match.orderStatus  = { $ne: "cancelled" };
+    match.orderStatus = { $ne: "cancelled" };
 
     // Date filter
     if (startDate || endDate) {
