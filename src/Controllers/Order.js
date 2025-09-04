@@ -322,7 +322,7 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
 
     // Send email only when order status is "delivered"
     if (orderStatus === "delivered") {
-      // Fetch customer email (assuming linked via userId or deliveryAddress)
+      // Fetch customer email
       let customerEmail = updatedOrder.deliveryAddress?.email;
       let customerName = updatedOrder.deliveryAddress?.FullName;
 

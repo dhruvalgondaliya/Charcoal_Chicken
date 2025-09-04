@@ -1,42 +1,72 @@
 import restaurant from "../Models/Restaurant.js";
 import ReviewSche from "../Models/Review.js";
+import OrderSche from "../Models/OrderSch.js";
+import mongoose from "mongoose";
 
 export const createReview = async (req, res) => {
-  const { userId, restaurantId } = req.params;
+  const { userId, restaurantId, orderId } = req.params;
+  console.log("Review Params:", { userId, restaurantId, orderId });
+
   const { rating, comment } = req.body;
 
   if (!rating || !comment) {
-    return res
-      .status(400)
-      .json({ message: "Rating and comment are required." });
+    return res.status(400).json({
+      success: false,
+      message: "Rating and comment are required.",
+    });
   }
 
   try {
-    const existingReview = await ReviewSche.findOne({ userId, restaurantId });
-    if (existingReview) {
+    //Check if order exists and belongs to the user
+    const order = await OrderSche.findOne({
+      _id: orderId,
+      userId,
+      restaurantId: new mongoose.Types.ObjectId(restaurantId),
+    });
+
+    if (!order) {
       return res.status(400).json({
-        message: "You have already submitted a review for this restaurant.",
+        success: false,
+        message: "You can only review after placing a valid order.",
       });
     }
 
+    //Check if user already reviewed this order
+    const existingReview = await ReviewSche.findOne({
+      userId,
+      orderId,
+    });
+
+    if (existingReview) {
+      return res.status(400).json({
+        success: false,
+        message: "You have already submitted a review for this order.",
+      });
+    }
+
+    // Create new review
     const review = await ReviewSche.create({
       userId,
       restaurantId,
+      orderId,
       rating,
       comment,
     });
 
-    // review update for Restaurant
+    // Push review ID to Restaurant document
     await restaurant.findByIdAndUpdate(restaurantId, {
       $push: { reviews: review._id },
     });
 
     res.status(201).json({
+      success: true,
       message: "Review created successfully",
       data: review,
     });
   } catch (error) {
+    console.error("Error creating review:", error);
     res.status(500).json({
+      success: false,
       message: "Failed to create review",
       error: error.message,
     });
