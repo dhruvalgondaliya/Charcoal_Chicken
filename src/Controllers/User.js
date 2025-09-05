@@ -68,7 +68,7 @@ export const loginUser = async (req, res) => {
     const token = jwt.sign(
       { id: user._id, Email: user.Email, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" }
+      { expiresIn: "1h" }
     );
 
     res.status(201).json({
@@ -196,7 +196,7 @@ export const updateUser = async (req, res) => {
 };
 
 // Delete User
-export const deleteUser = async (req, res) => { 
+export const deleteUser = async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);
 

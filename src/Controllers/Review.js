@@ -17,11 +17,15 @@ export const createReview = async (req, res) => {
   }
 
   try {
+    const normalizedRestaurantId = mongoose.Types.ObjectId.isValid(restaurantId)
+      ? new mongoose.Types.ObjectId(restaurantId)
+      : restaurantId;
+
     //Check if order exists and belongs to the user
     const order = await OrderSche.findOne({
       _id: orderId,
       userId,
-      restaurantId: new mongoose.Types.ObjectId(restaurantId),
+      restaurantId: normalizedRestaurantId,
     });
 
     if (!order) {
@@ -111,12 +115,18 @@ export const getReviewsByRestaurant = async (req, res) => {
     if (!reviews || reviews.length === 0) {
       return res.status(404).json({
         message: "No reviews found for this restaurant",
+        averageRating: 0,
       });
     }
 
+    // calculate average rating
+    const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0);
+    const averageRating = (totalRating / reviews.length).toFixed(1); 
+
     res.status(200).json({
-      message: "fetched Review for restaurant SuccessFully",
+      message: "Fetched reviews successfully",
       totalReview: reviews.length,
+      averageRating, 
       data: reviews,
     });
   } catch (error) {
