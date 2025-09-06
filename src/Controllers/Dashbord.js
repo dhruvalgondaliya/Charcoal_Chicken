@@ -8,6 +8,9 @@ import User from "../Models/User.js";
 
 // Super  Admin Api logic
 export const getRestaurantStats = async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Access denied." });
+  }
   try {
     // Count each status separately
     const [pending, approved, rejected, totalRestaurants] = await Promise.all([
@@ -38,6 +41,9 @@ export const getRestaurantStats = async (req, res) => {
 
 // get All User
 export const getAllNewUSer = async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Access denied." });
+  }
   try {
     const { range = "day" } = req.query;
 
@@ -71,6 +77,259 @@ export const getAllNewUSer = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+// get all restaurant new
+export const getRestaurantsStats = async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Access denied." });
+  }
+  try {
+    const { range = "day" } = req.query;
+
+    let groupFormat;
+    if (range === "day") {
+      groupFormat = {
+        year: { $year: "$createdAt" },
+        month: { $month: "$createdAt" },
+        day: { $dayOfMonth: "$createdAt" },
+      };
+    } else if (range === "month") {
+      groupFormat = {
+        year: { $year: "$createdAt" },
+        month: { $month: "$createdAt" },
+      };
+    } else if (range === "year") {
+      groupFormat = {
+        year: { $year: "$createdAt" },
+      };
+    }
+
+    // 🔹 New restaurants by range
+    const newRestaurants = await restaurant.aggregate([
+      { $group: { _id: groupFormat, count: { $sum: 1 } } },
+      { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
+    ]);
+
+    // 🔹 Total restaurants (all time)
+    const totalRestaurants = await restaurant.countDocuments();
+
+    res.json({
+      success: true,
+      data: {
+        newRestaurants,
+        totalRestaurants,
+      },
+    });
+  } catch (err) {
+    console.error("Error fetching restaurants stats:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// Total orders across all restaurants
+export const getOrdersStats = async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Access denied." });
+  }
+  try {
+    const { range = "day" } = req.query;
+
+    let groupFormat;
+    if (range === "day") {
+      groupFormat = {
+        year: { $year: "$createdAt" },
+        month: { $month: "$createdAt" },
+        day: { $dayOfMonth: "$createdAt" },
+      };
+    } else if (range === "month") {
+      groupFormat = {
+        year: { $year: "$createdAt" },
+        month: { $month: "$createdAt" },
+      };
+    } else {
+      groupFormat = { year: { $year: "$createdAt" } };
+    }
+
+    // ✅ Compute totalAmount from items
+    const orders = await OrderSche.aggregate([
+      {
+        $addFields: {
+          orderTotal: {
+            $sum: {
+              $map: {
+                input: "$items",
+                as: "item",
+                in: {
+                  $multiply: [
+                    "$$item.quantity",
+                    {
+                      $cond: [
+                        { $ifNull: ["$$item.variant.price", false] },
+                        "$$item.variant.price",
+                        "$$item.price",
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      },
+      {
+        $group: {
+          _id: groupFormat,
+          orderCount: { $sum: 1 },
+          totalRevenue: { $sum: "$orderTotal" },
+        },
+      },
+      { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
+    ]);
+
+    // ✅ Total stats for AOV
+    const overallStats = await OrderSche.aggregate([
+      {
+        $addFields: {
+          orderTotal: {
+            $sum: {
+              $map: {
+                input: "$items",
+                as: "item",
+                in: {
+                  $multiply: [
+                    "$$item.quantity",
+                    {
+                      $cond: [
+                        { $ifNull: ["$$item.variant.price", false] },
+                        "$$item.variant.price",
+                        "$$item.price",
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalOrders: { $sum: 1 },
+          totalRevenue: { $sum: "$orderTotal" },
+        },
+      },
+    ]);
+
+    const totalOrders = overallStats[0]?.totalOrders || 0;
+    const avgOrderValue =
+      totalOrders > 0 ? overallStats[0].totalRevenue / totalOrders : 0;
+
+    res.json({
+      success: true,
+      data: {
+        orders,
+        totalOrders,
+        avgOrderValue,
+      },
+    });
+  } catch (err) {
+    console.error("Error fetching orders stats:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// top selling restaurant
+export const getRestaurantWiseSales = async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Access denied." });
+  }
+  try {
+    const { range = "day" } = req.query;
+
+    let groupFormat;
+    if (range === "day") {
+      groupFormat = {
+        year: { $year: "$createdAt" },
+        month: { $month: "$createdAt" },
+        day: { $dayOfMonth: "$createdAt" },
+        restaurantId: "$restaurantId",
+      };
+    } else if (range === "month") {
+      groupFormat = {
+        year: { $year: "$createdAt" },
+        month: { $month: "$createdAt" },
+        restaurantId: "$restaurantId",
+      };
+    } else if (range === "year") {
+      groupFormat = {
+        year: { $year: "$createdAt" },
+        restaurantId: "$restaurantId",
+      };
+    }
+
+    const sales = await OrderSche.aggregate([
+      {
+        $addFields: {
+          orderTotal: {
+            $sum: {
+              $map: {
+                input: "$items",
+                as: "item",
+                in: {
+                  $multiply: [
+                    "$$item.quantity",
+                    {
+                      $cond: [
+                        { $ifNull: ["$$item.variant.price", false] },
+                        "$$item.variant.price",
+                        "$$item.price",
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      },
+      {
+        $group: {
+          _id: groupFormat,
+          totalSales: { $sum: "$orderTotal" },
+        },
+      },
+      {
+        $lookup: {
+          from: "restaurants",
+          localField: "_id.restaurantId",
+          foreignField: "_id",
+          as: "restaurant",
+        },
+      },
+      { $unwind: "$restaurant" },
+      {
+        $project: {
+          _id: 0,
+          restaurantId: "$_id.restaurantId",
+          restaurantName: "$restaurant.name",
+          year: "$_id.year",
+          month: "$_id.month",
+          day: "$_id.day",
+          totalSales: 1,
+        },
+      },
+      { $sort: { year: 1, month: 1, day: 1 } },
+    ]);
+
+    res.json({ success: true, data: sales });
+  } catch (err) {
+    console.error("Error fetching restaurant sales:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+
 
 // =============================== Restaurant Admin Api Logic For Dashboard ====================
 export const getDashboardStats = async (req, res) => {

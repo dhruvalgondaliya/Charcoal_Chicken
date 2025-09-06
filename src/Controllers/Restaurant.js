@@ -53,7 +53,7 @@ export const loginRestaurant = async (req, res) => {
       return res.status(404).json({ message: "Restaurant not found" });
     }
 
-    // ✅ Check approval status
+    // Check approval status
     if (resto.status === "pending") {
       return res.status(403).json({
         message: "Your request is still pending approval by admin.",
@@ -66,7 +66,7 @@ export const loginRestaurant = async (req, res) => {
       });
     }
 
-    // ✅ Check password
+    // Check password
     if (resto.Password !== Password) {
       return res.status(401).json({
         message: "Invalid Email or Password",
@@ -76,7 +76,7 @@ export const loginRestaurant = async (req, res) => {
     const token = jwt.sign(
       { id: resto._id, role: resto.role },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "1h" }
     );
 
     res.status(200).json({

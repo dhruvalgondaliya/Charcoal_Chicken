@@ -25,7 +25,7 @@ Restorant_Routes.post("/loginRestaurunt", loginRestaurant);
 // Get Routes
 // Restorant_Routes.get("/getAllRestaurunt", Auth, getAllRestaurunt);
 Restorant_Routes.get("/getAllRestauruntByAdmin", Auth, getAllRestaurants);
-Restorant_Routes.get("/getNotification", Auth, getnotification); // notification api
+Restorant_Routes.get("/getNotification", Auth, getnotification); 
 Restorant_Routes.get("/:id", Auth, RestoFindById);
 
 // Edit/Delete Route

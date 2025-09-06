@@ -21,13 +21,24 @@ export const getOrderReceipt = async (req, res) => {
     }
 
     const date = new Date(order.createdAt);
+    //  Calculate subtotal from items
+    let subTotal = 0;
+    order.items.forEach((item) => {
+      const price = item?.variant?.price || item?.menuItemId?.price || 0;
+      subTotal += price * item.quantity;
+    });
 
-    // Calculate safe numbers from cart data
-    const subTotal = order.cartId?.subTotal ?? 0;
-    const tax = order.cartId?.taxAmount ?? 0;
-    const discount = order.cartId?.discountAmount ?? 0;
-    const deliveryCharge = order.cartId?.deliveryCharge ?? 0;
-    const totalAmount = order.cartId?.totalAmount ?? 0;
+    // Apply discount
+    const discount = order.discountAmount || 0;
+    const afterDiscount = subTotal - discount;
+
+    // Tax and delivery
+    const taxRate = 0.05; // 5%
+    const tax = afterDiscount * taxRate;
+    const deliveryCharge = order.deliveryCharge || 30;
+
+    // Step 4: Final total
+    const totalAmount = afterDiscount + tax + deliveryCharge;
 
     // Set headers
     res.setHeader(
