@@ -14,6 +14,9 @@ export const createOrder = async (req, res) => {
       "items.menuItemId"
     );
 
+    if (!deliveryAddress) {
+      return res.status(400).json({ message: "Delivery address is required" });
+    }
     if (!cart) {
       return res.status(404).json({ message: "Cart not found" });
     }
@@ -30,6 +33,19 @@ export const createOrder = async (req, res) => {
         .json({ message: "Restaurant ID not found in cart items" });
     }
 
+    const subTotal = cart.items.reduce((acc, item) => {
+      // Use variant price if exists, else menu item price
+      const itemPrice = item.variant?.price || item.price || 0;
+      const quantity = Number(item.quantity || 0);
+      return acc + itemPrice * quantity;
+    }, 0);
+
+    const taxAmount = Number((subTotal * 0.05).toFixed(2));
+    const deliveryCharge = subTotal >= 300 ? 0 : 30;
+    const totalAmount = Number(
+      (subTotal + taxAmount + deliveryCharge).toFixed(2)
+    );
+
     const order = await OrderSche.create({
       userId,
       restaurantId,
@@ -38,11 +54,10 @@ export const createOrder = async (req, res) => {
       deliveryAddress,
       paymentMethod,
       paymentStatus: paymentMethod === "cod" ? "pending" : "paid",
-
-      subTotal: cart.subTotal,
-      taxAmount: cart.taxAmount,
-      deliveryCharge: cart.deliveryCharge,
-      totalAmount: cart.totalAmount,
+      subTotal: subTotal,
+      taxAmount: taxAmount,
+      deliveryCharge: deliveryCharge,
+      totalAmount: totalAmount,
     });
 
     // Clear cart after placing order

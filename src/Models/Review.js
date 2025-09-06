@@ -26,12 +26,7 @@ const ReviewSchema = new mongoose.Schema(
     comment: {
       type: String,
       required: true,
-    },
-    status: {
-      type: String,
-      enum: ["active", "deleted", "flagged"],
-      default: "active",
-    },
+    }
   },
   { timestamps: true, versionKey: false }
 );

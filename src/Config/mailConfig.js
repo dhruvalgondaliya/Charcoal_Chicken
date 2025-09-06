@@ -12,5 +12,4 @@ const mailConfig = {
   },
 };
 
-// Export it as default
 export default mailConfig;

@@ -24,7 +24,6 @@ const menuSchema = new mongoose.Schema(
   }
 );
 
-// ✅ Fix: Reuse model if already compiled
 const Menu = mongoose.models.Menu || mongoose.model("Menu", menuSchema);
 
 export default Menu;
