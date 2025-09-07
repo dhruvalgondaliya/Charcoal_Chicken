@@ -62,26 +62,25 @@ export const addToCart = async (req, res) => {
     let cart = await CartSche.findOne({ userId });
 
     if (!cart) {
-      // Create new cart if not exists
       cart = new CartSche({ userId, items: [] });
     }
 
-    // Check if the same item with same variant and addons already exists in cart
-    const existingItemIndex = cart.items.findIndex(item => {
-      // Check if menu item ID matches
+    // Check if the same item with same variant and addons already exists
+    const existingItemIndex = cart.items.findIndex((item) => {
+
       if (item.menuItemId.toString() !== menuItemId) return false;
-      
-      // Check if variant matches
+
+      // Check variant matches
       const itemVariantId = item.variant?._id?.toString() || null;
       const newVariantId = selectedVariant._id?.toString() || null;
       if (itemVariantId !== newVariantId) return false;
-      
-      // Check if addons match 
+
+      // Check if addons match
       if (item.addOns.length !== validAddOns.length) return false;
-      
-      const itemAddOnIds = item.addOns.map(a => a._id.toString()).sort();
-      const newAddOnIds = validAddOns.map(a => a._id.toString()).sort();
-      
+
+      const itemAddOnIds = item.addOns.map((a) => a._id.toString()).sort();
+      const newAddOnIds = validAddOns.map((a) => a._id.toString()).sort();
+
       return JSON.stringify(itemAddOnIds) === JSON.stringify(newAddOnIds);
     });
 
@@ -150,9 +149,10 @@ export const addToCart = async (req, res) => {
     await cart.save({ validateModifiedOnly: true });
 
     res.status(200).json({
-      message: existingItemIndex !== -1 
-        ? "Item quantity updated in cart" 
-        : "Item added to cart successfully",
+      message:
+        existingItemIndex !== -1
+          ? "Item quantity updated in cart"
+          : "Item added to cart successfully",
       cart,
     });
   } catch (error) {
@@ -164,7 +164,6 @@ export const addToCart = async (req, res) => {
     });
   }
 };
-
 
 // Fetch Cart By UserId
 export const fetchCartByUserId = async (req, res) => {

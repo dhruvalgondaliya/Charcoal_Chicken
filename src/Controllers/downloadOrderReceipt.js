@@ -33,7 +33,7 @@ export const getOrderReceipt = async (req, res) => {
     const afterDiscount = subTotal - discount;
 
     // Tax and delivery
-    const taxRate = 0.05; // 5%
+    const taxRate = 0.05; // 5% tax
     const tax = afterDiscount * taxRate;
     const deliveryCharge = order.deliveryCharge || 30;
 

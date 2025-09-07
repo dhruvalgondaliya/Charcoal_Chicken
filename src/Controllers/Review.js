@@ -107,26 +107,68 @@ export const getUserReview = async (req, res) => {
 export const getReviewsByRestaurant = async (req, res) => {
   try {
     const { id } = req.params;
+    const { page = 1, limit = 10, search = "" } = req.query;
 
-    const reviews = await ReviewSche.find({ restaurantId: id })
+    const pageNumber = parseInt(page, 10);
+    const pageSize = parseInt(limit, 10);
+
+    let searchFilter = { restaurantId: id };
+
+    // If search is provided
+    if (typeof search === "string" && search.trim() !== "") {
+      const orConditions = [];
+      // Search by comment
+      orConditions.push({ comment: { $regex: search, $options: "i" } });
+
+      // Search by rating if search is a number
+      const searchNumber = Number(search);
+      if (!isNaN(searchNumber)) {
+        orConditions.push({ rating: searchNumber });
+      }
+
+      searchFilter = {
+        ...searchFilter,
+        $or: orConditions,
+      };
+    }
+
+    // Count total matching reviews
+    const totalReviews = await ReviewSche.countDocuments(searchFilter);
+
+    // Fetch paginated reviews
+    const reviews = await ReviewSche.find(searchFilter)
       .populate("userId", "userName Email")
-      .populate("restaurantId", "name address");
+      .populate("restaurantId", "name address")
+      .sort({ createdAt: -1 }) // latest first
+      .skip((pageNumber - 1) * pageSize)
+      .limit(pageSize);
 
     if (!reviews || reviews.length === 0) {
-      return res.status(404).json({
-        message: "No reviews found for this restaurant",
+      return res.status(200).json({
+        message: search
+          ? "No reviews matched your search"
+          : "No reviews found for this restaurant",
         averageRating: 0,
+        totalReview: 0,
+        data: [],
+        currentPage: pageNumber,
+        totalPages: 0,
+        pageSize,
       });
     }
 
-    // calculate average rating
-    const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0);
-    const averageRating = (totalRating / reviews.length).toFixed(1); 
+    // Calculate average rating across ALL reviews
+    const allReviews = await ReviewSche.find({ restaurantId: id });
+    const totalRating = allReviews.reduce((sum, r) => sum + r.rating, 0);
+    const averageRating = (totalRating / allReviews.length).toFixed(1);
 
     res.status(200).json({
       message: "Fetched reviews successfully",
-      totalReview: reviews.length,
-      averageRating, 
+      totalReview: totalReviews,
+      averageRating,
+      currentPage: pageNumber,
+      totalPages: Math.ceil(totalReviews / pageSize),
+      pageSize,
       data: reviews,
     });
   } catch (error) {

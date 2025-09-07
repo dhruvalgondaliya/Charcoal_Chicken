@@ -49,6 +49,8 @@ export const UserRegistration = async (req, res) => {
 export const loginUser = async (req, res) => {
   const { Email, Password } = req.body;
 
+  console.log(Email, Password);
+
   if (!Email || !Password) {
     return res.status(400).json({ message: "Email or Password are required!" });
   }
@@ -68,7 +70,7 @@ export const loginUser = async (req, res) => {
     const token = jwt.sign(
       { id: user._id, Email: user.Email, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "1d" }
     );
 
     res.status(201).json({

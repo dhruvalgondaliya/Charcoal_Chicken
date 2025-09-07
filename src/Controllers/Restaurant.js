@@ -47,7 +47,6 @@ export const loginRestaurant = async (req, res) => {
 
   try {
     const resto = await restaurant.findOne({ email: email });
-    console.log("testing for email:", resto);
 
     if (!resto) {
       return res.status(404).json({ message: "Restaurant not found" });
@@ -76,12 +75,12 @@ export const loginRestaurant = async (req, res) => {
     const token = jwt.sign(
       { id: resto._id, role: resto.role },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "1d" }
     );
 
     res.status(200).json({
       success: true,
-      message: "Login successful",
+      message: "Login successfully",
       token,
       restaurant: {
         id: resto._id,

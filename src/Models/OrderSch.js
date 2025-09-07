@@ -45,6 +45,10 @@ const OrderSchema = new mongoose.Schema(
         ],
       },
     ],
+    subTotal: { type: Number, required: true },
+    taxAmount: { type: Number, required: true },
+    deliveryCharge: { type: Number, required: true },
+    totalAmount: { type: Number, required: true },
 
     deliveryAddress: {
       FullName: { type: String, required: true },

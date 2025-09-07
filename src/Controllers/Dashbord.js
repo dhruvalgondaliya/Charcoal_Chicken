@@ -329,8 +329,6 @@ export const getRestaurantWiseSales = async (req, res) => {
   }
 };
 
-
-
 // =============================== Restaurant Admin Api Logic For Dashboard ====================
 export const getDashboardStats = async (req, res) => {
   try {
@@ -415,21 +413,10 @@ export const getRestaurantSalesTrends = async (req, res) => {
 
     const salesData = await OrderSche.aggregate([
       { $match: match },
-      { $unwind: "$items" },
       {
         $project: {
           createdAt: 1,
-          totalAmount: {
-            $multiply: [
-              {
-                $ifNull: [
-                  "$items.variant.price",
-                  { $ifNull: ["$items.menuItemId.price", 0] },
-                ],
-              },
-              { $ifNull: ["$items.quantity", 0] },
-            ],
-          },
+          totalAmount: { $ifNull: ["$totalAmount", 0] },
         },
       },
       {
@@ -557,14 +544,10 @@ export const getOrdersByCategory = async (req, res) => {
     const { restaurantId } = req.params;
 
     const data = await OrderSche.aggregate([
-      {
-        $match: {
-          restaurantId: new mongoose.Types.ObjectId(restaurantId),
-        },
-      },
+      { $match: { restaurantId: new mongoose.Types.ObjectId(restaurantId) } },
       { $unwind: "$items" },
 
-      // lookup food item details
+      // Lookup food item details
       {
         $lookup: {
           from: "fooditems",
@@ -575,18 +558,18 @@ export const getOrdersByCategory = async (req, res) => {
       },
       { $unwind: "$foodItem" },
 
-      // lookup category from foodItem
+      // Lookup category from foodItem.categoryId
       {
         $lookup: {
           from: "categories",
-          localField: "foodItem._id",
-          foreignField: "items",
+          localField: "foodItem.categoryId",
+          foreignField: "_id",
           as: "category",
         },
       },
       { $unwind: "$category" },
 
-      // group by category
+      // Group by category
       {
         $group: {
           _id: "$category.name",
