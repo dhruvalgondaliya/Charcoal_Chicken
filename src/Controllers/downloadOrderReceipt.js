@@ -28,17 +28,14 @@ export const getOrderReceipt = async (req, res) => {
       subTotal += price * item.quantity;
     });
 
-    // Apply discount
-    const discount = order.discountAmount || 0;
-    const afterDiscount = subTotal - discount;
-
-    // Tax and delivery
-    const taxRate = 0.05; // 5% tax
-    const tax = afterDiscount * taxRate;
-    const deliveryCharge = order.deliveryCharge || 30;
-
-    // Step 4: Final total
-    const totalAmount = afterDiscount + tax + deliveryCharge;
+    // Apply discount (prefer order.discount, fallback to discountAmount)
+    const discount = order.discount || order.discountAmount || 0;
+    // Show subtotal, discount, and total as per order object
+    const subTotalFromOrder = order.subTotal || subTotal;
+    const totalAmountFromOrder =
+      order.totalAmount || subTotalFromOrder - discount;
+    const deliveryCharge = order.deliveryCharge || 0;
+    const taxAmount = order.taxAmount || 0;
 
     // Set headers
     res.setHeader(
@@ -444,19 +441,17 @@ export const getOrderReceipt = async (req, res) => {
       doc.y += isTotal ? 30 : 22;
     };
 
-    addSummaryLine("Subtotal:", formatCurrency(subTotal || 0));
+    addSummaryLine("Subtotal:", formatCurrency(subTotalFromOrder));
 
-    addSummaryLine("Tax:", formatCurrency(tax || 0));
-
-    if (Number(discount || 0) > 0) {
-      addSummaryLine("Discount:", formatCurrency(discount));
+    if (Number(discount) > 0) {
+      addSummaryLine("Discount:", `- ${formatCurrency(discount)}`);
     }
+
+    addSummaryLine("Tax:", formatCurrency(taxAmount));
 
     addSummaryLine(
       "Delivery Charge:",
-      Number(deliveryCharge || 0) === 0
-        ? "FREE"
-        : formatCurrency(deliveryCharge)
+      Number(deliveryCharge) === 0 ? "FREE" : formatCurrency(deliveryCharge)
     );
 
     addSpace(5);
@@ -465,7 +460,7 @@ export const getOrderReceipt = async (req, res) => {
 
     addSummaryLine(
       "TOTAL AMOUNT:",
-      formatCurrency(totalAmount || 0),
+      formatCurrency(totalAmountFromOrder),
       false,
       true
     );

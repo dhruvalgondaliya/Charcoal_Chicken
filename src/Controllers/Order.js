@@ -20,12 +20,11 @@ export const createOrder = async (req, res) => {
     if (!cart) {
       return res.status(404).json({ message: "Cart not found" });
     }
-
     if (!cart.items.length) {
       return res.status(400).json({ message: "Cart is empty" });
     }
 
-    // Assuming all items in the cart are from the same restaurant
+    // Assuming all items in the cart belong to the same restaurant
     const restaurantId = cart.items[0]?.menuItemId?.restaurantId;
     if (!restaurantId) {
       return res
@@ -33,8 +32,8 @@ export const createOrder = async (req, res) => {
         .json({ message: "Restaurant ID not found in cart items" });
     }
 
+    // ✅ Calculate subtotal
     const subTotal = cart.items.reduce((acc, item) => {
-      // Use variant price if exists, else menu item price
       const itemPrice = item.variant?.price || item.price || 0;
       const quantity = Number(item.quantity || 0);
       return acc + itemPrice * quantity;
@@ -42,8 +41,13 @@ export const createOrder = async (req, res) => {
 
     const taxAmount = Number((subTotal * 0.05).toFixed(2));
     const deliveryCharge = subTotal >= 300 ? 0 : 30;
+
+    // ✅ Use discount from cart (if any)
+    const discount = cart.discount || 0;
+
+    // ✅ Apply discount to total
     const totalAmount = Number(
-      (subTotal + taxAmount + deliveryCharge).toFixed(2)
+      (subTotal + taxAmount + deliveryCharge - discount).toFixed(2)
     );
 
     const order = await OrderSche.create({
@@ -55,13 +59,18 @@ export const createOrder = async (req, res) => {
       paymentMethod,
       paymentStatus: paymentMethod === "cod" ? "pending" : "paid",
       subTotal: subTotal,
+      discount: discount, // ✅ store discount
+      couponCode: cart.couponCode || null, // ✅ store coupon
       taxAmount: taxAmount,
       deliveryCharge: deliveryCharge,
-      totalAmount: totalAmount,
+      totalAmount: totalAmount, // ✅ correct total after discount
     });
 
-    // Clear cart after placing order
+    // ✅ Clear cart after placing order
     cart.items = [];
+    cart.couponCode = null;
+    cart.discount = 0;
+    cart.totalAmount = 0;
     await cart.save();
 
     res.status(201).json({
@@ -114,20 +123,19 @@ export const getUserByIdOrder = async (req, res) => {
     }
 
     const formattedOrders = orders.map((order) => {
-      // Subtotal calculation (variant price > menuItem price)
       const subtotal =
         order.items?.reduce((sum, i) => {
           const price = i.variant?.price || i.menuItemId?.price || 0;
           return sum + price * (i.quantity || 0);
         }, 0) || 0;
 
-      // Example tax: 5%
       const taxRate = 0.05;
       const taxAmount = subtotal * taxRate;
 
-      const totalAmount = subtotal + taxAmount;
+      const deliveryCharge = subtotal >= 300 ? 0 : 30;
 
-      // If order delivered → show only receipt
+      const totalAmount = subtotal + taxAmount + deliveryCharge;
+
       if (order.orderStatus === "delivered") {
         return {
           _id: order._id,
@@ -140,13 +148,13 @@ export const getUserByIdOrder = async (req, res) => {
           paymentType: order.paymentMethod,
           subtotal,
           taxAmount,
+          deliveryCharge,
           totalAmount,
           receipt: {
             orderId: order._id,
             restaurantName: order.restaurantId?.name,
             address: order.restaurantId?.address,
             user: order.userId,
-            user: order.userName,
             items: order.items.map((i) => ({
               name: i.menuItemId?.name,
               description: i.menuItemId?.description,
@@ -159,18 +167,20 @@ export const getUserByIdOrder = async (req, res) => {
             })),
             subtotal,
             taxAmount,
+            deliveryCharge,
             totalAmount,
             paymentStatus: order.paymentStatus === "paid" ? "Paid" : "Pending",
           },
         };
       }
 
-      // If not delivered → return normal order
+      // Not delivered
       return {
         ...order._doc,
         createdAt: order.createdAt,
         subtotal,
         taxAmount,
+        deliveryCharge,
         totalAmount,
         user: order.userId,
       };
