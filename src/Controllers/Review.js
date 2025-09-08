@@ -208,7 +208,7 @@ export const EditReviewByUser = async (req, res) => {
   }
 };
 
-// Delete RestaurantReview by user
+// Delete RestaurantReview by Restaurant admin 
 export const deleteRestaurantReview = async (req, res) => {
   const { userId, restaurantId } = req.params;
 

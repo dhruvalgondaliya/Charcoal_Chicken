@@ -131,6 +131,7 @@ export const getOrdersStats = async (req, res) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Access denied." });
   }
+
   try {
     const { range = "day" } = req.query;
 
@@ -150,29 +151,35 @@ export const getOrdersStats = async (req, res) => {
       groupFormat = { year: { $year: "$createdAt" } };
     }
 
-    // ✅ Compute totalAmount from items
+    // ✅ Orders breakdown by time range
     const orders = await OrderSche.aggregate([
       {
         $addFields: {
           orderTotal: {
-            $sum: {
-              $map: {
-                input: "$items",
-                as: "item",
-                in: {
-                  $multiply: [
-                    "$$item.quantity",
-                    {
-                      $cond: [
-                        { $ifNull: ["$$item.variant.price", false] },
-                        "$$item.variant.price",
-                        "$$item.price",
+            $add: [
+              {
+                $sum: {
+                  $map: {
+                    input: "$items",
+                    as: "item",
+                    in: {
+                      $multiply: [
+                        "$$item.quantity",
+                        {
+                          $cond: [
+                            { $ifNull: ["$$item.variant.price", false] },
+                            "$$item.variant.price",
+                            "$$item.price",
+                          ],
+                        },
                       ],
                     },
-                  ],
+                  },
                 },
               },
-            },
+              { $ifNull: ["$taxAmount", 0] },
+              { $ifNull: ["$deliveryCharge", 0] },
+            ],
           },
         },
       },
@@ -186,29 +193,35 @@ export const getOrdersStats = async (req, res) => {
       { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
     ]);
 
-    // ✅ Total stats for AOV
+    // ✅ Overall stats for AOV
     const overallStats = await OrderSche.aggregate([
       {
         $addFields: {
           orderTotal: {
-            $sum: {
-              $map: {
-                input: "$items",
-                as: "item",
-                in: {
-                  $multiply: [
-                    "$$item.quantity",
-                    {
-                      $cond: [
-                        { $ifNull: ["$$item.variant.price", false] },
-                        "$$item.variant.price",
-                        "$$item.price",
+            $add: [
+              {
+                $sum: {
+                  $map: {
+                    input: "$items",
+                    as: "item",
+                    in: {
+                      $multiply: [
+                        "$$item.quantity",
+                        {
+                          $cond: [
+                            { $ifNull: ["$$item.variant.price", false] },
+                            "$$item.variant.price",
+                            "$$item.price",
+                          ],
+                        },
                       ],
                     },
-                  ],
+                  },
                 },
               },
-            },
+              { $ifNull: ["$taxAmount", 0] },
+              { $ifNull: ["$deliveryCharge", 0] },
+            ],
           },
         },
       },
@@ -244,6 +257,7 @@ export const getRestaurantWiseSales = async (req, res) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Access denied." });
   }
+
   try {
     const { range = "day" } = req.query;
 
@@ -269,36 +283,46 @@ export const getRestaurantWiseSales = async (req, res) => {
     }
 
     const sales = await OrderSche.aggregate([
+      // Calculate order total: subtotal + taxAmount + deliveryCharge
       {
         $addFields: {
           orderTotal: {
-            $sum: {
-              $map: {
-                input: "$items",
-                as: "item",
-                in: {
-                  $multiply: [
-                    "$$item.quantity",
-                    {
-                      $cond: [
-                        { $ifNull: ["$$item.variant.price", false] },
-                        "$$item.variant.price",
-                        "$$item.price",
+            $add: [
+              {
+                $sum: {
+                  $map: {
+                    input: "$items",
+                    as: "item",
+                    in: {
+                      $multiply: [
+                        "$$item.quantity",
+                        {
+                          $cond: [
+                            { $ifNull: ["$$item.variant.price", false] },
+                            "$$item.variant.price",
+                            "$$item.price",
+                          ],
+                        },
                       ],
                     },
-                  ],
+                  },
                 },
               },
-            },
+              { $ifNull: ["$taxAmount", 0] },
+              { $ifNull: ["$deliveryCharge", 0] },
+            ],
           },
         },
       },
+
       {
         $group: {
           _id: groupFormat,
           totalSales: { $sum: "$orderTotal" },
         },
       },
+
+      // restaurant name get
       {
         $lookup: {
           from: "restaurants",
@@ -308,6 +332,7 @@ export const getRestaurantWiseSales = async (req, res) => {
         },
       },
       { $unwind: "$restaurant" },
+
       {
         $project: {
           _id: 0,
@@ -331,14 +356,25 @@ export const getRestaurantWiseSales = async (req, res) => {
 
 // =============================== Restaurant Admin Api Logic For Dashboard ====================
 export const getDashboardStats = async (req, res) => {
+  const { restaurantId } = req.params;
+
   try {
-    // Count totals in parallel for better performance
+    if (!restaurantId) {
+      return res.status(403).json({
+        success: false,
+        message: "Restaurant ID not found. Unauthorized access.",
+      });
+    }
+
+    // Add filter by restaurantId
+    const filter = { restaurantId };
+
     const [totalMenus, totalCategories, totalItems, totalOrders] =
       await Promise.all([
-        MenuSche.countDocuments(),
-        CategorySche.countDocuments(),
-        ItemSche.countDocuments(),
-        OrderSche.countDocuments(),
+        MenuSche.countDocuments(filter),
+        CategorySche.countDocuments(filter),
+        ItemSche.countDocuments(filter),
+        OrderSche.countDocuments(filter),
       ]);
 
     res.status(200).json({

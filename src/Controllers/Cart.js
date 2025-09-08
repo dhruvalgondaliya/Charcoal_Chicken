@@ -2,13 +2,13 @@ import CartSche from "../Models/Cart.js";
 import FoodItems from "../Models/FoodItems.js";
 
 // Coupon validation function
-const validateCoupon = (couponCode) => {
-  const coupons = {
-    SAVE10: { type: "percentage", value: 10 },
-    FREEDelivery: { type: "fixed", value: 30 },
-  };
-  return coupons[couponCode] || null;
-};
+function validateCoupon(code) {
+  const coupons = [
+    { code: "SAVE10", type: "percentage", value: 10 },
+    { code: "FLAT50", type: "fixed", value: 50 },
+  ];
+  return coupons.find((c) => c.code === code);
+}
 
 // Create Cart
 export const addToCart = async (req, res) => {
@@ -67,7 +67,6 @@ export const addToCart = async (req, res) => {
 
     // Check if the same item with same variant and addons already exists
     const existingItemIndex = cart.items.findIndex((item) => {
-
       if (item.menuItemId.toString() !== menuItemId) return false;
 
       // Check variant matches
@@ -452,21 +451,34 @@ export const applyCoupon = async (req, res) => {
       return res.status(404).json({ message: "Cart not found" });
     }
 
+    // Check if user already used a coupon for this cart/order
+    if (cart.couponCode) {
+      return res
+        .status(400)
+        .json({ message: "Coupon already applied for this order" });
+    }
+
     const coupon = validateCoupon(couponCode);
     if (!coupon) {
       return res.status(400).json({ message: "Invalid coupon code" });
     }
 
-    cart.couponCode = couponCode;
-    await cart.save({ validateModifiedOnly: true });
-
     const totalAmountBeforeTax = cart.items.reduce(
       (sum, item) => sum + (Number(item.price) || 0),
       0
     );
+
+    // Rule 1: Apply only if total >= 500
+    if (totalAmountBeforeTax < 500) {
+      return res.status(400).json({
+        message: "Coupon valid only for orders above ₹500",
+      });
+    }
+
     const taxRate = 0.05;
     const taxAmount = Math.round(totalAmountBeforeTax * taxRate * 100) / 100;
     const deliveryCharge = totalAmountBeforeTax >= 300 ? 0 : 30;
+
     let discount = 0;
     if (coupon.type === "percentage") {
       discount =
@@ -474,6 +486,8 @@ export const applyCoupon = async (req, res) => {
     } else if (coupon.type === "fixed") {
       discount = coupon.value;
     }
+
+    // Ensure discount doesn’t exceed payable
     discount = Math.min(
       discount,
       totalAmountBeforeTax + taxAmount + deliveryCharge
@@ -484,8 +498,11 @@ export const applyCoupon = async (req, res) => {
         (totalAmountBeforeTax + taxAmount + deliveryCharge - discount) * 100
       ) / 100;
 
+    // Save coupon info in backend (once per order)
+    cart.couponCode = couponCode;
     cart.discount = discount;
     cart.totalAmount = totalAmount;
+
     await cart.save({ validateModifiedOnly: true });
 
     res.status(200).json({

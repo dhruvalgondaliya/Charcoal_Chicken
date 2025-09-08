@@ -9,7 +9,7 @@ export const generateOrderReceiptHTML = (order, customerName) => {
     deliveryAddress,
     orderStatus,
     paymentStatus,
-    createdAt
+    createdAt,
   } = order;
 
   const calculatedTotal = totalAmount || calculateOrderTotal(items);
@@ -38,9 +38,13 @@ export const generateOrderReceiptHTML = (order, customerName) => {
           padding: 20px 0;
         }
         
-        .email-container {
-          max-width: 600px;
-          margin: 0 auto;
+          // Discount logic
+          const discount = order.discount || 0;
+          const subTotal = order.subTotal || 0;
+          const taxAmount = order.taxAmount || 0;
+          const deliveryCharge = order.deliveryCharge || 0;
+          const totalAmountFinal = order.totalAmount || (subTotal - discount + taxAmount + deliveryCharge);
+          const formattedDate = formatDate(createdAt);
           background-color: #ffffff;
           border-radius: 12px;
           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
@@ -337,36 +341,65 @@ export const generateOrderReceiptHTML = (order, customerName) => {
                 <th>Total</th>
               </tr>
             </thead>
-            <tbody>
-              ${items
-                .map((item) => {
-                  const itemName =
-                    item.FullName ||
-                    (item.menuItemId && item.menuItemId.name) ||
-                    "Unknown Item";
-                  const itemPrice = item.price || 0;
-                  const itemQuantity = item.quantity || 1;
-                  const itemTotal = itemPrice * itemQuantity;
+          <tbody>
+          ${items
+            .map((item) => {
+              const itemName =
+                item.FullName ||
+                (item.menuItemId && item.menuItemId.name) ||
+                "Unknown Item";
 
-                  return `
-                  <tr>
-                    <td class="item-name">${itemName}</td>
-                    <td><span class="quantity-badge">${itemQuantity}</span></td>
-                    <td>${formatCurrency(itemPrice)}</td>
-                    <td style="font-weight: 600;">${formatCurrency(
-                      itemTotal
-                    )}</td>
-                  </tr>
-                `;
-                })
-                .join("")}
-            </tbody>
+              const basePrice = item.price || 0;
+              const variantPrice =
+                item.variant && item.variant.price ? item.variant.price : null;
+              const itemPrice =
+                variantPrice !== null ? variantPrice : basePrice;
+
+              const itemQuantity = item.quantity || 1;
+              const itemTotal = itemPrice * itemQuantity;
+
+              return `
+                <tr>
+                  <td class="item-name">${itemName}</td>
+                  <td><span class="quantity-badge">${itemQuantity}</span></td>
+                  <td>${formatCurrency(itemPrice)}</td>
+                  <td style="font-weight: 600;">${formatCurrency(
+                    itemTotal
+                  )}</td>
+                </tr>
+              `;
+            })
+            .join("")}
+        </tbody>
+
+        <tfoot>
+            <tr>
+              <td colspan="3" style="text-align:right;font-weight:600;">Sub Total:</td>
+              <td style="font-weight:600;">${formatCurrency(order.subTotal || 0)}</td>
+            </tr>
+            ${
+              order.taxAmount && order.taxAmount > 0
+                ? `<tr>
+                    <td colspan="3" style="text-align:right;font-weight:600;">Tax:</td>
+                    <td style="font-weight:600;">${formatCurrency(order.taxAmount)}</td>
+                  </tr>`
+                : ""
+            }
+            ${
+              order.discount && order.discount > 0
+                ? `<tr>
+                    <td colspan="3" style="text-align:right;font-weight:600;">Discount:</td>
+                    <td style="font-weight:600;">-${formatCurrency(order.discount)}</td>
+                  </tr>`
+                : ""
+            }
+            <tr>
+              <td colspan="3" style="text-align:right;font-weight:700;">Total:</td>
+              <td style="font-weight:700;">${formatCurrency(order.totalAmount || 0)}</td>
+            </tr>
+          </tfoot>
           </table>
           
-          <div class="total-section">
-            <div style="font-size: 14px; color: #4a5568; margin-bottom: 5px;">Total Amount</div>
-            <div class="total-amount">${formattedTotal}</div>
-          </div>
           
           <h2 class="section-title">Delivery Information</h2>
           <div class="address-section">
@@ -378,8 +411,8 @@ export const generateOrderReceiptHTML = (order, customerName) => {
                 📞 ${deliveryAddress?.PhoneNumber || "N/A"}<br>
                 📍 ${deliveryAddress?.Address || "N/A"}<br>
                 ${deliveryAddress?.City || "N/A"}, ${
-    deliveryAddress?.ZIPCode || "N/A"
-  }
+                deliveryAddress?.ZIPCode || "N/A"
+              }
               </div>
             </div>
           </div>
@@ -414,7 +447,7 @@ export const generateOrderReceiptText = (order, customerName) => {
     deliveryAddress,
     orderStatus,
     paymentStatus,
-    createdAt
+    createdAt,
   } = order;
 
   const calculatedTotal = totalAmount || calculateOrderTotal(items);
@@ -509,10 +542,10 @@ const formatDate = (date) => {
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-      hour12: true
+      hour12: true,
     });
   } catch (error) {
     console.error("Error formatting date:", error);
     return "N/A";
   }
-};
+}
