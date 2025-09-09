@@ -15,6 +15,8 @@ import {
   getMenusByRestaurant,
   getRestaurantCategories,
   getItemsByRestaurant,
+  getMenuNamesByRestaurant,
+  getCategoryNamesByRestaurant,
 } from "../Controllers/MainFood.js";
 import Auth from "../MiddleWare/Auth.js";
 import upload from "../MiddleWare/Multer.js";
@@ -31,7 +33,9 @@ FoodMenu_Routes.get("/getAllMenu", getAllMenus);
 FoodMenu_Routes.get("/:menuId", Auth, getMenuById);
 FoodMenu_Routes.get("/:menuId/category", Auth, getCategoryById);
 FoodMenu_Routes.get("/restaurant/:restaurantId/menus",Auth, getMenusByRestaurant); // get particular Restaurant menu fetch
+FoodMenu_Routes.get("/restaurant/:restaurantId/names",Auth, getMenuNamesByRestaurant); // get particular Restaurant menu names fetch
 FoodMenu_Routes.get("/restaurants/:restaurantId/categories",Auth, getRestaurantCategories); // get particular Restaurant Category Fetch fetch
+FoodMenu_Routes.get("/restaurant/:restaurantId/categories/names",Auth, getCategoryNamesByRestaurant); // get particular Restaurant Category Names fetch
 FoodMenu_Routes.get("/restaurants/:restaurantId/items",Auth, getItemsByRestaurant); // get particular Restaurant Items fetch
 
 // Update/Delete Routes

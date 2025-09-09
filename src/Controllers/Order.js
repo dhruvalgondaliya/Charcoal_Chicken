@@ -32,7 +32,7 @@ export const createOrder = async (req, res) => {
         .json({ message: "Restaurant ID not found in cart items" });
     }
 
-    // ✅ Calculate subtotal
+    // Calculate subtotal
     const subTotal = cart.items.reduce((acc, item) => {
       const itemPrice = item.variant?.price || item.price || 0;
       const quantity = Number(item.quantity || 0);
@@ -42,10 +42,10 @@ export const createOrder = async (req, res) => {
     const taxAmount = Number((subTotal * 0.05).toFixed(2));
     const deliveryCharge = subTotal >= 300 ? 0 : 30;
 
-    // ✅ Use discount from cart (if any)
+    // Use discount from cart (if any)
     const discount = cart.discount || 0;
 
-    // ✅ Apply discount to total
+    // Apply discount to total
     const totalAmount = Number(
       (subTotal + taxAmount + deliveryCharge - discount).toFixed(2)
     );
@@ -59,14 +59,13 @@ export const createOrder = async (req, res) => {
       paymentMethod,
       paymentStatus: paymentMethod === "cod" ? "pending" : "paid",
       subTotal: subTotal,
-      discount: discount, // ✅ store discount
-      couponCode: cart.couponCode || null, // ✅ store coupon
+      discount: discount,
+      couponCode: cart.couponCode || null,
       taxAmount: taxAmount,
       deliveryCharge: deliveryCharge,
-      totalAmount: totalAmount, // ✅ correct total after discount
+      totalAmount: totalAmount,
     });
 
-    // ✅ Clear cart after placing order
     cart.items = [];
     cart.couponCode = null;
     cart.discount = 0;
@@ -110,18 +109,45 @@ export const getAllOrder = async (req, res) => {
 // Get UserByIdOrder
 export const getUserByIdOrder = async (req, res) => {
   const { userId } = req.params;
+  const { page = 1, limit = 10, search = "" } = req.query;
 
   try {
-    const orders = await OrderSche.find({ userId })
+    // Pagination
+    const pageNumber = parseInt(page, 10) || 1;
+    const limitNumber = parseInt(limit, 10) || 10;
+    const skip = (pageNumber - 1) * limitNumber;
+
+    // Search filter
+    let searchFilter = {};
+    if (search) {
+      searchFilter = {
+        $or: [
+          { orderStatus: { $regex: search, $options: "i" } },
+          { paymentStatus: { $regex: search, $options: "i" } },
+        ],
+      };
+    }
+
+    // Find matching orders
+    const orders = await OrderSche.find({ userId, ...searchFilter })
       .populate("items.menuItemId", "name description price")
       .populate("restaurantId", "name address")
       .populate("userId", "userName email phone")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNumber);
+
+    // Count total for pagination
+    const totalOrders = await OrderSche.countDocuments({
+      userId,
+      ...searchFilter,
+    });
 
     if (!orders || orders.length === 0) {
       return res.status(404).json({ message: "No Orders Found for this User" });
     }
 
+    // Format results
     const formattedOrders = orders.map((order) => {
       const subtotal =
         order.items?.reduce((sum, i) => {
@@ -131,9 +157,7 @@ export const getUserByIdOrder = async (req, res) => {
 
       const taxRate = 0.05;
       const taxAmount = subtotal * taxRate;
-
       const deliveryCharge = subtotal >= 300 ? 0 : 30;
-
       const totalAmount = subtotal + taxAmount + deliveryCharge;
 
       if (order.orderStatus === "delivered") {
@@ -174,7 +198,6 @@ export const getUserByIdOrder = async (req, res) => {
         };
       }
 
-      // Not delivered
       return {
         ...order._doc,
         createdAt: order.createdAt,
@@ -189,6 +212,12 @@ export const getUserByIdOrder = async (req, res) => {
     res.status(200).json({
       message: "Fetched user orders successfully!",
       data: formattedOrders,
+      pagination: {
+        totalOrders,
+        totalPages: Math.ceil(totalOrders / limitNumber),
+        currentPage: pageNumber,
+        pageSize: limitNumber,
+      },
     });
   } catch (error) {
     res.status(500).json({
@@ -197,6 +226,7 @@ export const getUserByIdOrder = async (req, res) => {
     });
   }
 };
+
 
 // Get restoruntBy order
 export const getRestaurantOrders = async (req, res) => {
@@ -263,7 +293,7 @@ export const getRestaurantOrders = async (req, res) => {
       .limit(parseInt(limit))
       .sort({ createdAt: -1 });
 
-    // Build a new array with totalAmount
+    // Build a new array with correct totalAmount (subtotal + tax + delivery - discount)
     const updatedOrders = orders.map((order) => {
       const subtotal =
         order.items?.reduce((sum, i) => {
@@ -271,19 +301,23 @@ export const getRestaurantOrders = async (req, res) => {
           return sum + price * (i.quantity || 0);
         }, 0) || 0;
 
-      // Example tax: 5%
       const taxRate = 0.05;
-      const taxAmount = subtotal * taxRate;
-      const totalAmount = subtotal + taxAmount;
+      const taxAmount = Number((subtotal * taxRate).toFixed(2));
+      const deliveryCharge = subtotal >= 300 ? 0 : 30;
+      const discount = order.discount || 0;
+      const couponCode = order.couponCode || null;
+      const totalAmount = Number(
+        (subtotal + taxAmount + deliveryCharge - discount).toFixed(2)
+      );
 
       return {
         ...order._doc,
-        cartId: {
-          ...order.cartId?._doc,
-          subtotal,
-          taxAmount,
-          totalAmount,
-        },
+        subtotal,
+        taxAmount,
+        deliveryCharge,
+        discount,
+        couponCode,
+        totalAmount,
       };
     });
 
