@@ -151,7 +151,7 @@ export const getOrdersStats = async (req, res) => {
       groupFormat = { year: { $year: "$createdAt" } };
     }
 
-    // ✅ Orders breakdown by time range
+    // ✅ Orders breakdown by time range + restaurant
     const orders = await OrderSche.aggregate([
       {
         $addFields: {
@@ -183,9 +183,22 @@ export const getOrdersStats = async (req, res) => {
           },
         },
       },
+      // ✅ Join with restaurants collection
+      {
+        $lookup: {
+          from: "restaurants", // name of restaurants collection
+          localField: "restaurantId",
+          foreignField: "_id",
+          as: "restaurant",
+        },
+      },
+      { $unwind: "$restaurant" },
       {
         $group: {
-          _id: groupFormat,
+          _id: {
+            ...groupFormat, // day/month/year
+            restaurant: "$restaurant.name", // add restaurant name
+          },
           orderCount: { $sum: 1 },
           totalRevenue: { $sum: "$orderTotal" },
         },

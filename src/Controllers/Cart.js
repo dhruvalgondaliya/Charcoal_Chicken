@@ -182,8 +182,15 @@ export const fetchCartByUserId = async (req, res) => {
         .json({ message: "No cart items found for the user" });
     }
 
+    // Always recalc values from cart items
+    const cartLength = cart.items.length; // ✅ distinct items count
+    const totalQuantity = cart.items.reduce(
+      (acc, item) => acc + (item.quantity || 1),
+      0
+    ); // ✅ total item quantity
+
     const totalAmountBeforeTax = cart.items.reduce((acc, item) => {
-      return acc + (Number(item.price) || 0);
+      return acc + (Number(item.price) || 0) * (item.quantity || 1);
     }, 0);
 
     const taxRate = 0.05;
@@ -216,17 +223,15 @@ export const fetchCartByUserId = async (req, res) => {
         (totalAmountBeforeTax + taxAmount + deliveryCharge - discount) * 100
       ) / 100;
 
-    cart.subTotal = totalAmountBeforeTax;
-    cart.taxAmount = taxAmount;
-    cart.deliveryCharge = deliveryCharge;
-    cart.discount = discount;
-    cart.totalAmount = totalAmount;
-    await cart.save({ validateModifiedOnly: true });
+    // ❌ Don’t persist calculated values in DB (keeps things stale)
+    // Just return them in response
 
     res.status(200).json({
       message: "Cart fetched successfully",
       data: {
         ...cart.toObject(),
+        cartLength, // ✅ number of distinct items
+        totalQuantity, // ✅ sum of all quantities
         totalAmount,
         totalAmountBeforeTax,
         taxAmount,

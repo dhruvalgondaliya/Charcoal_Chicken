@@ -213,6 +213,32 @@ export const getMenusByRestaurant = async (req, res) => {
   }
 };
 
+// get restaurant menu name
+export const getMenuNamesByRestaurant = async (req, res) => {
+  const { restaurantId } = req.params;
+
+  try {
+    if (!restaurantId) {
+      return res.status(400).json({ error: "Restaurant ID is required" });
+    }
+
+    const menus = await Menu.find(
+      { restaurantId: new mongoose.Types.ObjectId(restaurantId) },
+      { _id: 1, title: 1 }
+    );
+
+    res.status(200).json({
+      message: "Menu names fetched successfully",
+      data: menus,
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: "Failed to fetch menu names",
+      message: err.message,
+    });
+  }
+};
+
 // get particular Restaurant Category
 export const getRestaurantCategories = async (req, res) => {
   const { restaurantId } = req.params;
@@ -263,6 +289,32 @@ export const getRestaurantCategories = async (req, res) => {
   } catch (err) {
     res.status(500).json({
       error: "Failed to fetch categories for the restaurant",
+      message: err.message,
+    });
+  }
+};
+
+// get restaurant Category Name
+export const getCategoryNamesByRestaurant = async (req, res) => {
+  const { restaurantId } = req.params;
+
+  try {
+    if (!restaurantId) {
+      return res.status(400).json({ error: "Restaurant ID is required" });
+    }
+
+    const categories = await CategorySch.find(
+      { restaurantId },
+      { _id: 1, name: 1 }
+    ).populate("menuId", "title");
+
+    res.status(200).json({
+      message: "Category names fetched successfully",
+      data: categories,
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: "Failed to fetch category names",
       message: err.message,
     });
   }
