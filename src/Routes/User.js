@@ -6,6 +6,9 @@ import {
   userGetById,
   UserRegistration,
   deleteUser,
+  otpSendApi,
+  verifyOtpApi,
+  newPasswordApi,
 } from "../Controllers/User.js";
 import Auth from "../MiddleWare/Auth.js";
 
@@ -22,3 +25,8 @@ User_Routes.get("/getAllUser/:id", userGetById);
 // Edit/Delete Routes
 User_Routes.put("/updateUser/:id", Auth, updateUser);
 User_Routes.delete("/delete/:id", Auth, deleteUser);
+
+// Otp Api Routes
+User_Routes.post("/send-otp", otpSendApi);
+User_Routes.post("/verify-otp", verifyOtpApi);
+User_Routes.post("/forgot-password/new-password", newPasswordApi);

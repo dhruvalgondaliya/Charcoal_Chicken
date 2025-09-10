@@ -39,6 +39,8 @@ const UserSchema = new mongoose.Schema(
       enum: ["admin", "restaurant", "customer"],
       default: "customer",
     },
+    resetOTP: String,
+    resetOTPExpires: Date,
   },
   {
     timestamps: true,
