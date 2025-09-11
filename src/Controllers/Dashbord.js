@@ -8,9 +8,6 @@ import User from "../Models/User.js";
 
 // Super  Admin Api logic
 export const getRestaurantStats = async (req, res) => {
-  if (req.user.role !== "admin") {
-    return res.status(403).json({ message: "Access denied." });
-  }
   try {
     // Count each status separately
     const [pending, approved, rejected, totalRestaurants] = await Promise.all([
@@ -40,36 +37,54 @@ export const getRestaurantStats = async (req, res) => {
 };
 
 // get All User
-export const getAllNewUSer = async (req, res) => {
-  if (req.user.role !== "admin") {
-    return res.status(403).json({ message: "Access denied." });
-  }
-
+export const getAllNewUser = async (req, res) => {
   try {
     const { range = "day" } = req.query;
 
-    let groupFormat;
+    let matchStage = {};
+    let groupFormat = {};
+    let sortStage = {};
+    let limit = 0;
+
     if (range === "day") {
+      // last 30 days
+      const date = new Date();
+      date.setDate(date.getDate() - 30);
+      matchStage = { createdAt: { $gte: date } };
+
       groupFormat = {
         year: { $year: "$createdAt" },
         month: { $month: "$createdAt" },
         day: { $dayOfMonth: "$createdAt" },
       };
-    } else if (range === "week") {
-      groupFormat = {
-        year: { $year: "$createdAt" },
-        week: { $week: "$createdAt" },
-      };
+
+      sortStage = { "_id.year": 1, "_id.month": 1, "_id.day": 1 };
     } else if (range === "month") {
+      // last 12 months
+      const date = new Date();
+      date.setMonth(date.getMonth() - 12);
+      matchStage = { createdAt: { $gte: date } };
+
       groupFormat = {
         year: { $year: "$createdAt" },
         month: { $month: "$createdAt" },
       };
+
+      sortStage = { "_id.year": 1, "_id.month": 1 };
+    } else if (range === "year") {
+      groupFormat = {
+        year: { $year: "$createdAt" },
+      };
+
+      sortStage = { "_id.year": 1 };
+    } else {
+      return res.status(400).json({ success: false, message: "Invalid range" });
     }
 
     const result = await User.aggregate([
+      { $match: matchStage },
       { $group: { _id: groupFormat, count: { $sum: 1 } } },
-      { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
+      { $sort: sortStage },
     ]);
 
     res.json({ success: true, data: result });
@@ -81,34 +96,54 @@ export const getAllNewUSer = async (req, res) => {
 
 // get all restaurant new
 export const getRestaurantsStats = async (req, res) => {
-  if (req.user.role !== "admin") {
-    return res.status(403).json({ message: "Access denied." });
-  }
   try {
     const { range = "day" } = req.query;
 
-    let groupFormat;
+    let matchStage = {};
+    let groupFormat = {};
+    let sortStage = {};
+
     if (range === "day") {
+      // last 30 days
+      const date = new Date();
+      date.setDate(date.getDate() - 30);
+      matchStage = { createdAt: { $gte: date } };
+
       groupFormat = {
         year: { $year: "$createdAt" },
         month: { $month: "$createdAt" },
         day: { $dayOfMonth: "$createdAt" },
       };
+
+      sortStage = { "_id.year": 1, "_id.month": 1, "_id.day": 1 };
     } else if (range === "month") {
+      // last 12 months
+      const date = new Date();
+      date.setMonth(date.getMonth() - 12);
+      matchStage = { createdAt: { $gte: date } };
+
       groupFormat = {
         year: { $year: "$createdAt" },
         month: { $month: "$createdAt" },
       };
+
+      sortStage = { "_id.year": 1, "_id.month": 1 };
     } else if (range === "year") {
+      // all years
       groupFormat = {
         year: { $year: "$createdAt" },
       };
+
+      sortStage = { "_id.year": 1 };
+    } else {
+      return res.status(400).json({ success: false, message: "Invalid range" });
     }
 
-    // 🔹 New restaurants by range
+    // 🔹 New restaurants grouped by range
     const newRestaurants = await restaurant.aggregate([
+      { $match: matchStage },
       { $group: { _id: groupFormat, count: { $sum: 1 } } },
-      { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
+      { $sort: sortStage },
     ]);
 
     // 🔹 Total restaurants (all time)
@@ -129,31 +164,50 @@ export const getRestaurantsStats = async (req, res) => {
 
 // Total orders across all restaurants
 export const getOrdersStats = async (req, res) => {
-  if (req.user.role !== "admin") {
-    return res.status(403).json({ message: "Access denied." });
-  }
-
   try {
     const { range = "day" } = req.query;
 
-    let groupFormat;
+    let matchStage = {};
+    let groupFormat = {};
+    let sortStage = {};
+
     if (range === "day") {
+      // Last 30 days
+      const date = new Date();
+      date.setDate(date.getDate() - 7);
+      matchStage = { createdAt: { $gte: date } };
+
       groupFormat = {
         year: { $year: "$createdAt" },
         month: { $month: "$createdAt" },
         day: { $dayOfMonth: "$createdAt" },
       };
+
+      sortStage = { "_id.year": 1, "_id.month": 1, "_id.day": 1 };
     } else if (range === "month") {
+      // Last 12 months
+      const date = new Date();
+      date.setMonth(date.getMonth() - 12);
+      matchStage = { createdAt: { $gte: date } };
+
       groupFormat = {
         year: { $year: "$createdAt" },
         month: { $month: "$createdAt" },
       };
+
+      sortStage = { "_id.year": 1, "_id.month": 1 };
     } else {
-      groupFormat = { year: { $year: "$createdAt" } };
+      // Yearly
+      groupFormat = {
+        year: { $year: "$createdAt" },
+      };
+
+      sortStage = { "_id.year": 1 };
     }
 
-    // ✅ Orders breakdown by time range + restaurant
+    // Orders breakdown by time range + restaurant
     const orders = await OrderSche.aggregate([
+      { $match: matchStage },
       {
         $addFields: {
           orderTotal: {
@@ -184,10 +238,10 @@ export const getOrdersStats = async (req, res) => {
           },
         },
       },
-      // ✅ Join with restaurants collection
+      // Join with restaurants collection
       {
         $lookup: {
-          from: "restaurants", // name of restaurants collection
+          from: "restaurants",
           localField: "restaurantId",
           foreignField: "_id",
           as: "restaurant",
@@ -198,17 +252,18 @@ export const getOrdersStats = async (req, res) => {
         $group: {
           _id: {
             ...groupFormat, // day/month/year
-            restaurant: "$restaurant.name", // add restaurant name
+            restaurant: "$restaurant.name",
           },
           orderCount: { $sum: 1 },
           totalRevenue: { $sum: "$orderTotal" },
         },
       },
-      { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
+      { $sort: sortStage },
     ]);
 
-    // ✅ Overall stats for AOV
+    // Overall stats for AOV
     const overallStats = await OrderSche.aggregate([
+      { $match: matchStage },
       {
         $addFields: {
           orderTotal: {
@@ -268,84 +323,77 @@ export const getOrdersStats = async (req, res) => {
 
 // top selling restaurant
 export const getRestaurantWiseSales = async (req, res) => {
-  if (req.user.role !== "admin") {
-    return res.status(403).json({ message: "Access denied." });
-  }
-
   try {
     const { range = "day" } = req.query;
 
-    let groupFormat;
+    let matchStage = {};
+    let groupFormat = {};
+    let labelExpr = {};
+
     if (range === "day") {
+      const date = new Date();
+      date.setDate(date.getDate() - 7); // week wise data
+      matchStage = { createdAt: { $gte: date } };
+
       groupFormat = {
         year: { $year: "$createdAt" },
         month: { $month: "$createdAt" },
         day: { $dayOfMonth: "$createdAt" },
         restaurantId: "$restaurantId",
       };
+
+      labelExpr = {
+        $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+      };
     } else if (range === "month") {
+      const date = new Date();
+      date.setMonth(date.getMonth() - 12);
+      matchStage = { createdAt: { $gte: date } };
+
       groupFormat = {
         year: { $year: "$createdAt" },
         month: { $month: "$createdAt" },
         restaurantId: "$restaurantId",
       };
-    } else if (range === "year") {
+
+      labelExpr = {
+        $dateToString: { format: "%Y-%m", date: "$createdAt" },
+      };
+    } else {
       groupFormat = {
         year: { $year: "$createdAt" },
         restaurantId: "$restaurantId",
       };
+
+      labelExpr = { $toString: "$year" };
     }
 
     const sales = await OrderSche.aggregate([
-      // Calculate order total: subtotal + taxAmount + deliveryCharge
-      {
-        $addFields: {
-          orderTotal: {
-            $add: [
-              {
-                $sum: {
-                  $map: {
-                    input: "$items",
-                    as: "item",
-                    in: {
-                      $multiply: [
-                        "$$item.quantity",
-                        {
-                          $cond: [
-                            { $ifNull: ["$$item.variant.price", false] },
-                            "$$item.variant.price",
-                            "$$item.price",
-                          ],
-                        },
-                      ],
-                    },
-                  },
-                },
-              },
-              { $ifNull: ["$taxAmount", 0] },
-              { $ifNull: ["$deliveryCharge", 0] },
-            ],
-          },
-        },
-      },
+      { $match: matchStage },
 
       {
         $group: {
           _id: groupFormat,
-          totalSales: { $sum: "$orderTotal" },
+          totalSales: { $sum: "$totalAmount" },
+          lastOrder: { $max: "$createdAt" },
         },
       },
 
-      // restaurant name get
+      // Join restaurant details
       {
         $lookup: {
           from: "restaurants",
-          localField: "_id.restaurantId",
-          foreignField: "_id",
+          let: { restoId: "$_id.restaurantId" },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ["$_id", { $toObjectId: "$$restoId" }] },
+              },
+            },
+          ],
           as: "restaurant",
         },
       },
-      { $unwind: "$restaurant" },
 
       {
         $project: {
@@ -356,9 +404,16 @@ export const getRestaurantWiseSales = async (req, res) => {
           month: "$_id.month",
           day: "$_id.day",
           totalSales: 1,
+          lastOrder: 1,
+          label: labelExpr, // 🟢 formatted for chart X-axis
         },
       },
-      { $sort: { year: 1, month: 1, day: 1 } },
+
+      // Sort by sales (highest first) then by latest order
+      { $sort: { totalSales: -1, lastOrder: -1 } },
+
+      // Limit to top 4 restaurants
+      { $limit: 4 },
     ]);
 
     res.json({ success: true, data: sales });
@@ -437,7 +492,7 @@ export const getRestaurantSalesTrends = async (req, res) => {
         match.createdAt.$lte = end;
       }
     }
-    // 📊 GroupId & sortStage
+    // GroupId & sortStage
     let groupId, sortStage;
     if (range === "monthly") {
       groupId = {

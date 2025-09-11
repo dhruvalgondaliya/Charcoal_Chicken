@@ -227,7 +227,6 @@ export const getUserByIdOrder = async (req, res) => {
   }
 };
 
-
 // Get restoruntBy order
 export const getRestaurantOrders = async (req, res) => {
   const { restaurantId } = req.params;
@@ -244,7 +243,7 @@ export const getRestaurantOrders = async (req, res) => {
   try {
     const query = { restaurantId };
 
-    // Search
+    // 🔎 Search
     if (typeof search === "string" && search.trim() !== "") {
       const orConditions = [
         { "deliveryAddress.FullName": { $regex: search, $options: "i" } },
@@ -272,6 +271,7 @@ export const getRestaurantOrders = async (req, res) => {
       query.$or = orConditions;
     }
 
+    // 🛠 Filters
     if (orderStatus) query.orderStatus = orderStatus;
     if (paymentStatus) query.paymentStatus = paymentStatus;
 
@@ -285,6 +285,7 @@ export const getRestaurantOrders = async (req, res) => {
 
     const skip = (page - 1) * limit;
 
+    //  Paginated orders
     const orders = await OrderSche.find(query)
       .populate("items.menuItemId", "name description price")
       .populate("restaurantId", "name address")
@@ -293,7 +294,7 @@ export const getRestaurantOrders = async (req, res) => {
       .limit(parseInt(limit))
       .sort({ createdAt: -1 });
 
-    // Build a new array with correct totalAmount (subtotal + tax + delivery - discount)
+    // Calculate amounts for each order
     const updatedOrders = orders.map((order) => {
       const subtotal =
         order.items?.reduce((sum, i) => {
@@ -323,6 +324,30 @@ export const getRestaurantOrders = async (req, res) => {
 
     const total = await OrderSche.countDocuments(query);
 
+    // Grand total (only delivered orders, case-insensitive)
+    const deliveredOrders = await OrderSche.find({
+      ...query,
+      orderStatus: { $regex: /^delivered$/i },
+    });
+
+    const grandTotal = deliveredOrders.reduce((sum, order) => {
+      const subtotal =
+        order.items?.reduce((s, i) => {
+          const price = i.variant?.price || i.menuItemId?.price || 0;
+          return s + price * (i.quantity || 0);
+        }, 0) || 0;
+
+      const taxRate = 0.05;
+      const taxAmount = Number((subtotal * taxRate).toFixed(2));
+      const deliveryCharge = subtotal >= 300 ? 0 : 30;
+      const discount = order.discount || 0;
+      const totalAmount = Number(
+        (subtotal + taxAmount + deliveryCharge - discount).toFixed(2)
+      );
+
+      return sum + totalAmount;
+    }, 0);
+
     res.status(200).json({
       success: true,
       message: "Orders fetched successfully",
@@ -331,6 +356,7 @@ export const getRestaurantOrders = async (req, res) => {
         total,
         totalPages: Math.ceil(total / limit),
         currentPage: Number(page),
+        grandTotal,
       },
     });
   } catch (error) {

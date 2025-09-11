@@ -20,7 +20,7 @@ export const createMenu = async (req, res) => {
       return res.status(400).json({ message: "Menu title is required" });
     }
 
-    // Optional: check for duplicate menu name in the same restaurant
+    // check for duplicate menu name in the same restaurant
     const existingMenu = await Menu.findOne({
       restaurantId,
       title: { $regex: new RegExp(`^${title.trim()}$`, "i") },
@@ -461,57 +461,93 @@ export const updateItemInCategory = async (req, res) => {
   const { menuId, categoryId, itemId } = req.params;
 
   try {
+    // Check if menu exists
     const menu = await Menu.findById(menuId);
     if (!menu) return res.status(404).json({ message: "Menu not found" });
 
+    // Check if category belongs to this menu
     const hasCategory = menu.categories.some(
       (catId) => catId.toString() === categoryId
     );
-    if (!hasCategory)
+    if (!hasCategory) {
       return res
         .status(404)
         .json({ message: "Category does not belong to the menu" });
+    }
 
+    // Check category exists
     const category = await CategorySch.findById(categoryId);
     if (!category)
       return res.status(404).json({ message: "Category not found" });
 
+    // Check item belongs to this category
     const hasItem = category.items.some((id) => id.toString() === itemId);
     if (!hasItem)
       return res
         .status(404)
         .json({ message: "Item not found in this category" });
 
-    // Extract and parse values from req.body
-    const { name, description, price, hasVariants, addOns } = req.body;
+    // Extract values from body
+    const { name, description, price, hasVariants } = req.body;
 
     const updatedData = {
       name,
       description,
-      hasVariants: hasVariants === "true",
-      addOns: addOns === "true",
+      hasVariants: hasVariants === "true" || hasVariants === true,
     };
 
+    // Handle variants
     if (updatedData.hasVariants) {
-      const parsedVariants = [];
-      let i = 0;
-      while (req.body[`variants[${i}][size]`]) {
-        parsedVariants.push({
-          size: req.body[`variants[${i}][size]`],
-          price: parseFloat(req.body[`variants[${i}][price]`] || "0"),
-        });
-        i++;
+      let parsedVariants = [];
+
+      if (Array.isArray(req.body.variants)) {
+        // JSON array case
+        parsedVariants = req.body.variants.map((v) => ({
+          size: v.size,
+          price: parseFloat(v.price || 0),
+        }));
+      } else {
+        // Form-data case
+        let i = 0;
+        while (req.body[`variants[${i}][size]`]) {
+          parsedVariants.push({
+            size: req.body[`variants[${i}][size]`],
+            price: parseFloat(req.body[`variants[${i}][price]`] || "0"),
+          });
+          i++;
+        }
       }
+
       updatedData.variants = parsedVariants;
     } else {
       updatedData.price = parseFloat(price || "0");
     }
 
-    // If new image is uploaded
+    // Handle AddOns
+    if (Array.isArray(req.body.addOns)) {
+      updatedData.addOns = req.body.addOns.map((a) => ({
+        name: a.name,
+        price: parseFloat(a.price || 0),
+      }));
+    } else if (req.body["addOns[0][name]"]) {
+      let j = 0;
+      const parsedAddOns = [];
+      while (req.body[`addOns[${j}][name]`]) {
+        parsedAddOns.push({
+          name: req.body[`addOns[${j}][name]`],
+          price: parseFloat(req.body[`addOns[${j}][price]`] || "0"),
+        });
+        j++;
+      }
+      updatedData.addOns = parsedAddOns;
+    }
+
+    // Handle image upload
     if (req.file) {
       updatedData.imageUrl = `/uploads/${req.file.filename}`;
     }
 
+    // Update item in
     const updatedItem = await foodItemSch.findByIdAndUpdate(
       itemId,
       updatedData,
