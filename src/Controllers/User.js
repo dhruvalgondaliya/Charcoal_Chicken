@@ -1,6 +1,8 @@
 import OrderSche from "../Models/OrderSch.js";
+import restaurant from "../Models/Restaurant.js";
 import User from "../Models/User.js";
 import jwt from "jsonwebtoken";
+import { sendMail } from "../services/emailService.js";
 
 // USer Register
 export const UserRegistration = async (req, res) => {
@@ -211,5 +213,116 @@ export const deleteUser = async (req, res) => {
     res
       .status(500)
       .json({ message: "Failed To Delete User", error: err.message });
+  }
+};
+
+// forgot password Api for user and admin
+export const otpSendApi = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    let account = await User.findOne({ Email: email });
+    let accountType = "user";
+
+    if (!account) {
+      account = await restaurant.findOne({ email: email });
+      accountType = "restaurant";
+    }
+
+    if (!account) {
+      return res.status(404).json({ message: "Email not found" });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Save OTP and expiry (2 minutes)
+    account.resetOTP = otp;
+    account.resetOTPExpires = Date.now() + 5 * 60 * 1000;
+    account.isOtpVerified = false;
+    await account.save();
+
+    // Send OTP email
+    await sendMail(
+      email,
+      "Your OTP Code",
+      `Your OTP is ${otp}. It expires in 5 minutes.`
+    );
+
+    res.json({ message: `OTP sent to ${accountType} email ${otp}` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// verify otp and reset password
+export const verifyOtpApi = async (req, res) => {
+  const { email, otp } = req.body;
+
+  try {
+    let account = await User.findOne({ Email: email });
+    let accountType = "user";
+
+    if (!account) {
+      account = await restaurant.findOne({ email: email });
+      accountType = "restaurant";
+    }
+
+    if (!account) {
+      return res.status(404).json({ message: "Email not found" });
+    }
+
+    if (!account.resetOTP || account.resetOTP !== otp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    if (Date.now() > account.resetOTPExpires) {
+      return res.status(400).json({ message: "OTP expired" });
+    }
+
+    // otp verify
+    account.isOtpVerified = true;
+    await account.save();
+
+    res.json({ message: "OTP verified successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// new Password Api
+export const newPasswordApi = async (req, res) => {
+  const { email, newPassword } = req.body;
+
+  try {
+    let account = await User.findOne({ Email: email });
+    let accountType = "user";
+
+    if (!account) {
+      account = await restaurant.findOne({ email });
+      accountType = "restaurant";
+    }
+
+    if (!account) {
+      return res.status(404).json({ message: "Email not found" });
+    }
+
+    // Update password
+    account.Password = newPassword;
+
+    // Clear OTP fields
+    account.resetOTP = undefined;
+    account.resetOTPExpires = undefined;
+
+    await account.save();
+
+    res.json({
+      message: `${accountType} password has been reset successfully`,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
   }
 };

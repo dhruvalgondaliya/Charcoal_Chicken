@@ -45,6 +45,8 @@ const RestaurantSchema = new mongoose.Schema(
         ref: "Review",
       },
     ],
+    resetOTP: String,
+    resetOTPExpires: Date,
   },
   { timestamps: true, versionKey: false }
 );

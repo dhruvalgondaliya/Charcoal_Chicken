@@ -10,11 +10,20 @@ export const generateOrderReceiptHTML = (order, customerName) => {
     orderStatus,
     paymentStatus,
     createdAt,
+    subTotal,
+    taxAmount,
+    discount,
+    deliveryCharge,
   } = order;
 
-  const calculatedTotal = totalAmount || calculateOrderTotal(items);
+  // Calculate totals properly
+  const calculatedSubTotal = subTotal || calculateOrderTotal(items);
+  const calculatedDiscount = discount || 0;
+  const calculatedTax = taxAmount || 0;
+  const calculatedDeliveryCharge = deliveryCharge || 0;
+  const calculatedTotal = totalAmount || (calculatedSubTotal - calculatedDiscount + calculatedTax + calculatedDeliveryCharge);
+  
   const formattedDate = formatDate(createdAt);
-  const formattedTotal = formatCurrency(calculatedTotal);
 
   return `
     <!DOCTYPE html>
@@ -38,13 +47,9 @@ export const generateOrderReceiptHTML = (order, customerName) => {
           padding: 20px 0;
         }
         
-          // Discount logic
-          const discount = order.discount || 0;
-          const subTotal = order.subTotal || 0;
-          const taxAmount = order.taxAmount || 0;
-          const deliveryCharge = order.deliveryCharge || 0;
-          const totalAmountFinal = order.totalAmount || (subTotal - discount + taxAmount + deliveryCharge);
-          const formattedDate = formatDate(createdAt);
+        .email-container {
+          max-width: 600px;
+          margin: 0 auto;
           background-color: #ffffff;
           border-radius: 12px;
           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
@@ -105,10 +110,10 @@ export const generateOrderReceiptHTML = (order, customerName) => {
         }
         
         .info-value {
-        width:180px;
           font-size: 14px;
           font-weight: 500;
           color: #2d3748;
+          word-wrap: break-word;
         }
         
         .status-badge {
@@ -189,14 +194,21 @@ export const generateOrderReceiptHTML = (order, customerName) => {
           padding: 25px;
           border-radius: 8px;
           margin-bottom: 35px;
-          text-align: right;
         }
         
-        .total-amount {
-          font-size: 24px;
+        .total-row {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 8px;
+        }
+        
+        .total-row.final {
+          font-size: 18px;
           font-weight: 700;
           color: #2d3748;
-          margin-top: 10px;
+          margin-top: 15px;
+          padding-top: 15px;
+          border-top: 2px solid #e2e8f0;
         }
         
         .address-section {
@@ -259,8 +271,8 @@ export const generateOrderReceiptHTML = (order, customerName) => {
             padding: 25px 20px;
           }
 
-          .info-value{
-            font-size:11px;
+          .info-value {
+            font-size: 12px;
           }
           
           .order-info-grid {
@@ -278,8 +290,8 @@ export const generateOrderReceiptHTML = (order, customerName) => {
             font-size: 24px;
           }
           
-          .total-amount {
-            font-size: 20px;
+          .total-row.final {
+            font-size: 16px;
           }
         }
       </style>
@@ -293,9 +305,7 @@ export const generateOrderReceiptHTML = (order, customerName) => {
         
         <div class="content">
           <div class="greeting">
-            Hello ${
-              customerName || deliveryAddress?.FullName || "Valued Customer"
-            },
+            Hello ${customerName || deliveryAddress?.FullName || "Valued Customer"},
           </div>
           
           <p style="margin-bottom: 30px; color: #4a5568; font-size: 16px;">
@@ -305,9 +315,7 @@ export const generateOrderReceiptHTML = (order, customerName) => {
           <div class="order-info-grid">
             <div class="info-item">
               <span class="info-label">Order Number</span>
-              <span class="info-value">#${
-                orderNumber || order._id || "N/A"
-              }</span>
+              <span class="info-value">#${orderNumber || order._id || "N/A"}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Order Date</span>
@@ -316,17 +324,13 @@ export const generateOrderReceiptHTML = (order, customerName) => {
             <div class="info-item">
               <span class="info-label">Order Status</span>
               <span class="info-value">
-                <span class="status-badge status-${(
-                  orderStatus || "pending"
-                ).toLowerCase()}">${orderStatus || "Pending"}</span>
+                <span class="status-badge status-${(orderStatus || "pending").toLowerCase()}">${orderStatus || "Pending"}</span>
               </span>
             </div>
             <div class="info-item">
               <span class="info-label">Payment Status</span>
               <span class="info-value">
-                <span class="status-badge status-${(
-                  paymentStatus || "unpaid"
-                ).toLowerCase()}">${paymentStatus || "Unpaid"}</span>
+                <span class="status-badge status-${(paymentStatus || "unpaid").toLowerCase()}">${paymentStatus || "Unpaid"}</span>
               </span>
             </div>
           </div>
@@ -341,81 +345,78 @@ export const generateOrderReceiptHTML = (order, customerName) => {
                 <th>Total</th>
               </tr>
             </thead>
-          <tbody>
-          ${items
-            .map((item) => {
-              const itemName =
-                item.FullName ||
-                (item.menuItemId && item.menuItemId.name) ||
-                "Unknown Item";
+            <tbody>
+              ${items && items.length > 0 ? items.map((item) => {
+                const itemName = item.FullName || 
+                                (item.menuItemId && item.menuItemId.name) || 
+                                item.name || 
+                                "Unknown Item";
 
-              const basePrice = item.price || 0;
-              const variantPrice =
-                item.variant && item.variant.price ? item.variant.price : null;
-              const itemPrice =
-                variantPrice !== null ? variantPrice : basePrice;
+                const basePrice = item.price || 0;
+                const variantPrice = item.variant && item.variant.price ? item.variant.price : null;
+                const itemPrice = variantPrice !== null ? variantPrice : basePrice;
 
-              const itemQuantity = item.quantity || 1;
-              const itemTotal = itemPrice * itemQuantity;
+                const itemQuantity = item.quantity || 1;
+                const itemTotal = itemPrice * itemQuantity;
 
-              return `
-                <tr>
-                  <td class="item-name">${itemName}</td>
-                  <td><span class="quantity-badge">${itemQuantity}</span></td>
-                  <td>${formatCurrency(itemPrice)}</td>
-                  <td style="font-weight: 600;">${formatCurrency(
-                    itemTotal
-                  )}</td>
-                </tr>
-              `;
-            })
-            .join("")}
-        </tbody>
-
-        <tfoot>
-            <tr>
-              <td colspan="3" style="text-align:right;font-weight:600;">Sub Total:</td>
-              <td style="font-weight:600;">${formatCurrency(order.subTotal || 0)}</td>
-            </tr>
-            ${
-              order.taxAmount && order.taxAmount > 0
-                ? `<tr>
-                    <td colspan="3" style="text-align:right;font-weight:600;">Tax:</td>
-                    <td style="font-weight:600;">${formatCurrency(order.taxAmount)}</td>
-                  </tr>`
-                : ""
-            }
-            ${
-              order.discount && order.discount > 0
-                ? `<tr>
-                    <td colspan="3" style="text-align:right;font-weight:600;">Discount:</td>
-                    <td style="font-weight:600;">-${formatCurrency(order.discount)}</td>
-                  </tr>`
-                : ""
-            }
-            <tr>
-              <td colspan="3" style="text-align:right;font-weight:700;">Total:</td>
-              <td style="font-weight:700;">${formatCurrency(order.totalAmount || 0)}</td>
-            </tr>
-          </tfoot>
+                return `
+                  <tr>
+                    <td class="item-name">${itemName}</td>
+                    <td><span class="quantity-badge">${itemQuantity}</span></td>
+                    <td>${formatCurrency(itemPrice)}</td>
+                    <td style="font-weight: 600;">${formatCurrency(itemTotal)}</td>
+                  </tr>
+                `;
+              }).join("") : '<tr><td colspan="4" style="text-align: center;">No items found</td></tr>'}
+            </tbody>
           </table>
           
-          
-          <h2 class="section-title">Delivery Information</h2>
-          <div class="address-section">
-            <div class="address-content">
-              <div class="address-name">${
-                deliveryAddress?.FullName || "N/A"
-              }</div>
-              <div class="address-details">
-                📞 ${deliveryAddress?.PhoneNumber || "N/A"}<br>
-                📍 ${deliveryAddress?.Address || "N/A"}<br>
-                ${deliveryAddress?.City || "N/A"}, ${
-                deliveryAddress?.ZIPCode || "N/A"
-              }
+          <div class="total-section">
+            <div class="total-row">
+              <span>Sub Total:</span>
+              <span>${formatCurrency(calculatedSubTotal)}</span>
+            </div>
+            
+            ${calculatedTax > 0 ? `
+              <div class="total-row">
+                <span>Tax:</span>
+                <span>${formatCurrency(calculatedTax)}</span>
               </div>
+            ` : ''}
+            
+            ${calculatedDiscount > 0 ? `
+              <div class="total-row">
+                <span>Discount:</span>
+                <span>-${formatCurrency(calculatedDiscount)}</span>
+              </div>
+            ` : ''}
+            
+            ${calculatedDeliveryCharge > 0 ? `
+              <div class="total-row">
+                <span>Delivery Charge:</span>
+                <span>${formatCurrency(calculatedDeliveryCharge)}</span>
+              </div>
+            ` : ''}
+            
+            <div class="total-row final">
+              <span>Total Amount:</span>
+              <span>${formatCurrency(calculatedTotal)}</span>
             </div>
           </div>
+          
+          ${deliveryAddress ? `
+            <h2 class="section-title">Delivery Information</h2>
+            <div class="address-section">
+              <div class="address-content">
+                <div class="address-name">${deliveryAddress.FullName || "N/A"}</div>
+                <div class="address-details">
+                  📞 ${deliveryAddress.PhoneNumber || "N/A"}<br>
+                  📍 ${deliveryAddress.Address || "N/A"}<br>
+                  ${deliveryAddress.City || "N/A"}${deliveryAddress.ZIPCode ? `, ${deliveryAddress.ZIPCode}` : ''}
+                </div>
+              </div>
+            </div>
+          ` : ''}
           
           <div class="divider"></div>
           
@@ -448,29 +449,40 @@ export const generateOrderReceiptText = (order, customerName) => {
     orderStatus,
     paymentStatus,
     createdAt,
+    subTotal,
+    taxAmount,
+    discount,
+    deliveryCharge,
   } = order;
 
-  const calculatedTotal = totalAmount || calculateOrderTotal(items);
+  // Calculate totals properly
+  const calculatedSubTotal = subTotal || calculateOrderTotal(items);
+  const calculatedDiscount = discount || 0;
+  const calculatedTax = taxAmount || 0;
+  const calculatedDeliveryCharge = deliveryCharge || 0;
+  const calculatedTotal = totalAmount || (calculatedSubTotal - calculatedDiscount + calculatedTax + calculatedDeliveryCharge);
+  
   const formattedDate = formatDate(createdAt);
-  const formattedTotal = formatCurrency(calculatedTotal);
 
   // Format items for text email
-  const itemsText = items
-    .map((item, index) => {
-      const itemName =
-        item.FullName ||
-        (item.menuItemId && item.menuItemId.name) ||
-        "Unknown Item";
-      const itemPrice = item.price || 0;
-      const itemQuantity = item.quantity || 1;
-      const itemTotal = itemPrice * itemQuantity;
+  const itemsText = items && items.length > 0 ? items.map((item, index) => {
+    const itemName = item.FullName || 
+                    (item.menuItemId && item.menuItemId.name) || 
+                    item.name || 
+                    "Unknown Item";
+    
+    const basePrice = item.price || 0;
+    const variantPrice = item.variant && item.variant.price ? item.variant.price : null;
+    const itemPrice = variantPrice !== null ? variantPrice : basePrice;
+    
+    const itemQuantity = item.quantity || 1;
+    const itemTotal = itemPrice * itemQuantity;
 
-      return `${index + 1}. ${itemName}
+    return `${index + 1}. ${itemName}
    Quantity: ${itemQuantity}
    Price: ${formatCurrency(itemPrice)}
    Subtotal: ${formatCurrency(itemTotal)}`;
-    })
-    .join("\n\n");
+  }).join("\n\n") : "No items found";
 
   return `
 ═══════════════════════════════════════
@@ -490,19 +502,25 @@ Payment Status: ${paymentStatus || "Unpaid"}
 
 ORDER SUMMARY:
 ─────────────────────────────────────
-${itemsText || "No items found"}
+${itemsText}
 
+BILLING DETAILS:
 ─────────────────────────────────────
-TOTAL AMOUNT: ${formattedTotal}
+Sub Total: ${formatCurrency(calculatedSubTotal)}${calculatedTax > 0 ? `
+Tax: ${formatCurrency(calculatedTax)}` : ''}${calculatedDiscount > 0 ? `
+Discount: -${formatCurrency(calculatedDiscount)}` : ''}${calculatedDeliveryCharge > 0 ? `
+Delivery Charge: ${formatCurrency(calculatedDeliveryCharge)}` : ''}
+─────────────────────────────────────
+TOTAL AMOUNT: ${formatCurrency(calculatedTotal)}
 ─────────────────────────────────────
 
-DELIVERY ADDRESS:
+${deliveryAddress ? `DELIVERY ADDRESS:
 ─────────────────────────────────────
-${deliveryAddress?.FullName || "N/A"}
-Phone: ${deliveryAddress?.PhoneNumber || "N/A"}
-Address: ${deliveryAddress?.Address || "N/A"}
-City: ${deliveryAddress?.City || "N/A"} ${deliveryAddress?.ZIPCode || "N/A"}
-
+${deliveryAddress.FullName || "N/A"}
+Phone: ${deliveryAddress.PhoneNumber || "N/A"}
+Address: ${deliveryAddress.Address || "N/A"}
+City: ${deliveryAddress.City || "N/A"} ${deliveryAddress.ZIPCode || "N/A"}
+` : ''}
 ═══════════════════════════════════════
 
 We'll keep you updated on your order status via email and SMS.
@@ -519,10 +537,14 @@ Need help? Reply to this email or contact our support team.
 // Helper function to calculate order total if not provided
 const calculateOrderTotal = (items) => {
   try {
+    if (!items || !Array.isArray(items)) return 0;
+    
     return items.reduce((total, item) => {
-      const itemPrice = item.price || 0;
+      const basePrice = item.price || 0;
+      const variantPrice = item.variant && item.variant.price ? item.variant.price : null;
+      const itemPrice = variantPrice !== null ? variantPrice : basePrice;
       const itemQuantity = item.quantity || 1;
-      return total + itemPrice * itemQuantity;
+      return total + (itemPrice * itemQuantity);
     }, 0);
   } catch (error) {
     console.error("Error calculating order total:", error);
@@ -548,4 +570,4 @@ const formatDate = (date) => {
     console.error("Error formatting date:", error);
     return "N/A";
   }
-}
+};

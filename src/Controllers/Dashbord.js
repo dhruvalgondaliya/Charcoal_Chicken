@@ -44,6 +44,7 @@ export const getAllNewUSer = async (req, res) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Access denied." });
   }
+
   try {
     const { range = "day" } = req.query;
 
@@ -578,16 +579,16 @@ export const getTopSaleItems = async (req, res) => {
     ]);
 
     res.json({
+      success: true,
       message: "top selling Item Fetch SuccessFully",
       data: topItems,
     });
   } catch (error) {
-    console.error("Error fetching top-selling items:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Get Orders by Category (Donut/Pie Chart Data)
+// Get Orders by Category
 export const getOrdersByCategory = async (req, res) => {
   try {
     const { restaurantId } = req.params;
@@ -607,7 +608,7 @@ export const getOrdersByCategory = async (req, res) => {
       },
       { $unwind: "$foodItem" },
 
-      // Lookup category from foodItem.categoryId
+      // Lookup category from foodItem
       {
         $lookup: {
           from: "categories",
