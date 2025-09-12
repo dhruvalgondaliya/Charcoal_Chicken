@@ -536,7 +536,7 @@ export const generateOrderReceiptText = (order, customerName) => {
 
   return `
 ═══════════════════════════════════════
-          ORDER CONFIRMATION
+          ORDER DELIVERED SUCCESSFULLY
 ═══════════════════════════════════════
 
 Hello ${customerName || deliveryAddress?.FullName || "Valued Customer"},

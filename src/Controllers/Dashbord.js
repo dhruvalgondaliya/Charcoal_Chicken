@@ -332,7 +332,7 @@ export const getRestaurantWiseSales = async (req, res) => {
 
     if (range === "day") {
       const date = new Date();
-      date.setDate(date.getDate() - 7); // week wise data
+      date.setDate(date.getDate() - 7);
       matchStage = { createdAt: { $gte: date } };
 
       groupFormat = {
@@ -405,7 +405,7 @@ export const getRestaurantWiseSales = async (req, res) => {
           day: "$_id.day",
           totalSales: 1,
           lastOrder: 1,
-          label: labelExpr, // 🟢 formatted for chart X-axis
+          label: labelExpr,
         },
       },
 
@@ -468,7 +468,7 @@ export const getDashboardStats = async (req, res) => {
 // get Sale Chart IN Restaurant Admin show
 export const getRestaurantSalesTrends = async (req, res) => {
   const { restaurantId } = req.params;
-  const { range = "daily", startDate, endDate } = req.query;
+  const { range = "day" } = req.query;
 
   try {
     if (!mongoose.Types.ObjectId.isValid(restaurantId)) {
@@ -477,43 +477,65 @@ export const getRestaurantSalesTrends = async (req, res) => {
         .json({ success: false, message: "Invalid restaurantId" });
     }
 
-    const match = { restaurantId: new mongoose.Types.ObjectId(restaurantId) };
-
-    // Exclude cancelled orders
+    const match = {
+      restaurantId: new mongoose.Types.ObjectId(restaurantId),
+    };
     match.orderStatus = { $ne: "cancelled" };
 
-    // Date filter
-    if (startDate || endDate) {
-      match.createdAt = {};
-      if (startDate) match.createdAt.$gte = new Date(startDate);
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        match.createdAt.$lte = end;
-      }
-    }
-    // GroupId & sortStage
-    let groupId, sortStage;
-    if (range === "monthly") {
+    let groupId;
+    let projectId;
+
+    if (range === "month") {
       groupId = {
         year: { $year: "$createdAt" },
         month: { $month: "$createdAt" },
       };
-      sortStage = { "_id.year": 1, "_id.month": 1 };
-    } else if (range === "weekly") {
-      groupId = {
-        year: { $year: "$createdAt" },
-        week: { $week: "$createdAt" },
+      projectId = {
+        _id: 0,
+        month: {
+          $concat: [
+            { $toString: "$_id.year" },
+            "-",
+            {
+              $cond: [
+                { $lt: ["$_id.month", 10] },
+                { $concat: ["0", { $toString: "$_id.month" }] },
+                { $toString: "$_id.month" },
+              ],
+            },
+          ],
+        },
+
+        totalSales: 1,
+        orders: 1,
       };
-      sortStage = { "_id.year": 1, "_id.week": 1 };
+    } else if (range === "year") {
+      groupId = { year: { $year: "$createdAt" } };
+      projectId = { _id: 0, year: "$_id.year", totalSales: 1, orders: 1 };
     } else {
-      // default daily
+      // daily
       groupId = {
         year: { $year: "$createdAt" },
         month: { $month: "$createdAt" },
         day: { $dayOfMonth: "$createdAt" },
       };
-      sortStage = { "_id.year": 1, "_id.month": 1, "_id.day": 1 };
+      projectId = {
+        _id: 0,
+        date: {
+          $dateToString: {
+            format: "%Y-%m-%d",
+            date: {
+              $dateFromParts: {
+                year: "$_id.year",
+                month: "$_id.month",
+                day: "$_id.day",
+              },
+            },
+          },
+        },
+        totalSales: 1,
+        orders: 1,
+      };
     }
 
     const salesData = await OrderSche.aggregate([
@@ -531,7 +553,8 @@ export const getRestaurantSalesTrends = async (req, res) => {
           orders: { $sum: 1 },
         },
       },
-      { $sort: sortStage },
+      { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
+      { $project: projectId },
     ]);
 
     res.json({ success: true, data: salesData });
@@ -544,32 +567,35 @@ export const getRestaurantSalesTrends = async (req, res) => {
 // Payment Chart
 export const getPaymentMethodStats = async (req, res) => {
   const { restaurantId } = req.params;
-  const { startDate, endDate } = req.query;
+  const { range = "day" } = req.query;
 
   try {
-    const match = {
-      restaurantId: new mongoose.Types.ObjectId(restaurantId),
-    };
-
-    // Optional date filter
-    if (startDate && !isNaN(Date.parse(startDate))) {
-      match.createdAt = { ...match.createdAt, $gte: new Date(startDate) };
-    }
-    if (endDate && !isNaN(Date.parse(endDate))) {
-      match.createdAt = { ...match.createdAt, $lte: new Date(endDate) };
+    let dateFormat = {};
+    if (range === "day") {
+      dateFormat = {
+        $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+      };
+    } else if (range === "month") {
+      dateFormat = { $dateToString: { format: "%m-%Y", date: "$createdAt" } };
+    } else if (range === "year") {
+      dateFormat = { $dateToString: { format: "%Y", date: "$createdAt" } };
     }
 
     const stats = await OrderSche.aggregate([
-      { $match: match },
+      { $match: { restaurantId: new mongoose.Types.ObjectId(restaurantId) } },
       {
         $group: {
-          _id: "$paymentMethod",
+          _id: {
+            paymentMethod: "$paymentMethod",
+            period: dateFormat, // day, month, or year
+          },
           count: { $sum: 1 },
         },
       },
       {
         $project: {
-          paymentMethod: "$_id",
+          paymentMethod: "$_id.paymentMethod",
+          period: "$_id.period",
           count: 1,
           _id: 0,
         },
@@ -593,9 +619,51 @@ export const getPaymentMethodStats = async (req, res) => {
 export const getTopSaleItems = async (req, res) => {
   try {
     const { restaurantId } = req.params;
+    const { range } = req.query;
 
     if (!restaurantId) {
       return res.status(400).json({ message: "restaurantId is required" });
+    }
+
+    let groupStage = {};
+    let sortStage = {};
+    let limitStage = {};
+
+    if (range === "day") {
+      // Last 30 days
+      groupStage = {
+        _id: {
+          year: { $year: "$createdAt" },
+          month: { $month: "$createdAt" },
+          day: { $dayOfMonth: "$createdAt" },
+          itemId: "$items.menuItemId",
+        },
+        totalSold: { $sum: "$items.quantity" },
+      };
+      sortStage = { "_id.year": -1, "_id.month": -1, "_id.day": -1 };
+      limitStage = { $limit: 30 };
+    } else if (range === "month") {
+      // Last 12 months
+      groupStage = {
+        _id: {
+          year: { $year: "$createdAt" },
+          month: { $month: "$createdAt" },
+          itemId: "$items.menuItemId",
+        },
+        totalSold: { $sum: "$items.quantity" },
+      };
+      sortStage = { "_id.year": -1, "_id.month": -1 };
+      limitStage = { $limit: 12 };
+    } else if (range === "year") {
+      // Year-wise
+      groupStage = {
+        _id: {
+          year: { $year: "$createdAt" },
+          itemId: "$items.menuItemId",
+        },
+        totalSold: { $sum: "$items.quantity" },
+      };
+      sortStage = { "_id.year": -1 };
     }
 
     const topItems = await OrderSche.aggregate([
@@ -606,17 +674,13 @@ export const getTopSaleItems = async (req, res) => {
         },
       },
       { $unwind: "$items" },
-      {
-        $group: {
-          _id: "$items.menuItemId",
-          totalSold: { $sum: "$items.quantity" },
-        },
-      },
-      { $sort: { totalSold: -1 } },
+      { $group: groupStage },
+      { $sort: sortStage },
+      ...(range !== "year" ? [limitStage] : []),
       {
         $lookup: {
           from: "fooditems",
-          localField: "_id",
+          localField: "_id.itemId",
           foreignField: "_id",
           as: "item",
         },
@@ -625,9 +689,11 @@ export const getTopSaleItems = async (req, res) => {
       {
         $project: {
           _id: 0,
+          date: "$_id",
           itemId: "$item._id",
           name: "$item.name",
           image: "$item.image",
+          day: "$_id.day",
           totalSold: 1,
         },
       },
@@ -635,10 +701,11 @@ export const getTopSaleItems = async (req, res) => {
 
     res.json({
       success: true,
-      message: "top selling Item Fetch SuccessFully",
+      message: `Top selling items (${range}-wise) fetched successfully`,
       data: topItems,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -647,12 +714,29 @@ export const getTopSaleItems = async (req, res) => {
 export const getOrdersByCategory = async (req, res) => {
   try {
     const { restaurantId } = req.params;
+    const { range } = req.query;
+
+    const groupId = {
+      category: "$category.name",
+    };
+
+    if (range === "day") {
+      groupId.date = {
+        $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+      };
+    } else if (range === "month") {
+      groupId.date = {
+        $dateToString: { format: "%Y-%m", date: "$createdAt" },
+      };
+    } else if (range === "year") {
+      groupId.date = {
+        $dateToString: { format: "%Y", date: "$createdAt" },
+      };
+    }
 
     const data = await OrderSche.aggregate([
       { $match: { restaurantId: new mongoose.Types.ObjectId(restaurantId) } },
       { $unwind: "$items" },
-
-      // Lookup food item details
       {
         $lookup: {
           from: "fooditems",
@@ -662,8 +746,6 @@ export const getOrdersByCategory = async (req, res) => {
         },
       },
       { $unwind: "$foodItem" },
-
-      // Lookup category from foodItem
       {
         $lookup: {
           from: "categories",
@@ -674,10 +756,9 @@ export const getOrdersByCategory = async (req, res) => {
       },
       { $unwind: "$category" },
 
-      // Group by category
       {
         $group: {
-          _id: "$category.name",
+          _id: groupId,
           totalOrders: { $sum: "$items.quantity" },
           totalRevenue: {
             $sum: { $multiply: ["$items.quantity", "$items.price"] },
@@ -685,6 +766,7 @@ export const getOrdersByCategory = async (req, res) => {
         },
       },
       { $sort: { totalOrders: -1 } },
+      { $limit: 2 },
     ]);
 
     res.status(200).json({

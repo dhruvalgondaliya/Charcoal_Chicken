@@ -380,7 +380,7 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
     "cancelled",
   ];
 
-  const validPaymentStatuses = ["pending", "paid"];
+  const validPaymentStatuses = ["pending", "paid", "failed"];
 
   if (orderStatus && !validOrderStatuses.includes(orderStatus)) {
     return res.status(400).json({ message: "Invalid order status" });
