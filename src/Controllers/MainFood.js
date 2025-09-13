@@ -630,7 +630,7 @@ export const deleteItemCategory = async (req, res) => {
       return res.status(404).json({ message: "Item not found" });
     }
 
-    // Remove the item from category.items if present
+    // Remove the item from category.items if 
     category.items.pull(new mongoose.Types.ObjectId(itemId));
     await category.save();
 

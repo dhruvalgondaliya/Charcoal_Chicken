@@ -23,7 +23,7 @@ export const approvalEmailTemplate = (restaurantName, ownerName) => `
         <p>Best regards,<br>The Platform Team</p>
       </div>
       <div class="footer">
-        <p>&copy; 2025 Your Platform Name. All rights reserved.</p>
+        <p>&copy; ${new Date().getFullYear()} Charcole Chicken. All rights reserved.</p>
       </div>
     </div>
   </body>
@@ -55,7 +55,7 @@ export const rejectionEmailTemplate = (restaurantName, ownerName) => `
         <p>Best regards,<br>The Platform Team</p>
       </div>
       <div class="footer">
-        <p>&copy; 2025 Your Platform Name. All rights reserved.</p>
+         <p>&copy; ${new Date().getFullYear()} Charcole Chicken. All rights reserved.</p>
       </div>
     </div>
   </body>
