@@ -42,6 +42,11 @@ const foodItemSchema = new mongoose.Schema(
       ref: "Category",
       required: true,
     },
+
+    menuId:{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Menu",
+    }
   },
   { versionKey: false }
 );

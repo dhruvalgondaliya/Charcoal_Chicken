@@ -429,30 +429,43 @@ export const updateCategory = async (req, res) => {
   const updates = req.body;
 
   try {
+    // Validate menu exists
     const menu = await Menu.findById(menuId).populate("categories");
     if (!menu) return res.status(404).json({ message: "Menu not found" });
 
-    // Find category by ID
-    const category = menu.categories.find(
+    // Validate category belongs to this menu
+    const categoryIndex = menu.categories.findIndex(
       (cat) => cat._id.toString() === categoryId
     );
+    if (categoryIndex === -1)
+      return res.status(404).json({ message: "Category not found in this menu" });
 
-    if (!category)
-      return res.status(404).json({ message: "Category not found" });
-
-    const newCategory = await CategorySch.findByIdAndUpdate(
+    // Update category
+    const updatedCategory = await CategorySch.findByIdAndUpdate(
       categoryId,
       updates,
-      { new: true }
+      { new: true, runValidators: true }
     );
 
-    res
-      .status(200)
-      .json({ message: "Category updated successfully", data: newCategory });
+    if (!updatedCategory)
+      return res.status(404).json({ message: "Category not found" });
+
+    // Update the menu's categories array (optional, depending on your schema)
+    menu.categories[categoryIndex] = updatedCategory;
+    await menu.save();
+
+    res.status(200).json({
+      message: "Category updated successfully",
+      data: {
+        ...updatedCategory.toObject(),
+        menuId: { _id: menu._id, title: menu.title },
+      },
+    });
   } catch (err) {
-    res
-      .status(500)
-      .json({ error: "Failed to update category", err: err.message });
+    res.status(500).json({
+      error: "Failed to update category",
+      message: "An error occurred while updating the category",
+    });
   }
 };
 
