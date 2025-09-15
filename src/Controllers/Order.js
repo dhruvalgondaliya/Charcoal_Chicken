@@ -243,7 +243,7 @@ export const getRestaurantOrders = async (req, res) => {
   try {
     const query = { restaurantId };
 
-    // 🔎 Search
+    // Search
     if (typeof search === "string" && search.trim() !== "") {
       const orConditions = [
         { "deliveryAddress.FullName": { $regex: search, $options: "i" } },
@@ -410,6 +410,8 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
       // Fetch customer email
       let customerEmail = updatedOrder.deliveryAddress?.email;
       let customerName = updatedOrder.deliveryAddress?.FullName;
+      let restaurantName = null;
+      let imageurl = null;
 
       // If email is not in deliveryAddress, fetch from User model
       if (!customerEmail && updatedOrder.userId) {
@@ -426,7 +428,9 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
           await sendOrderReceiptEmail(
             updatedOrder,
             customerEmail,
-            customerName
+            customerName,
+            imageurl,
+            restaurantName
           );
           console.log("Order receipt email sent to:", customerEmail);
         } catch (emailError) {

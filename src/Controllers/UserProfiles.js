@@ -24,9 +24,6 @@ export const CreateProfile = async (req, res) => {
       imageurl,
     });
 
-    console.log("testing data:", body);
-    console.log("file:", file);
-
     await user.save();
 
     res.status(201).json({
@@ -81,8 +78,6 @@ export const updateUserProfile = async (req, res) => {
       ...body,
       imageurl,
     };
-
-    console.log("testing for image url:", imageurl);
 
     const updatedProfile = await UserProSch.findByIdAndUpdate(
       profileId,

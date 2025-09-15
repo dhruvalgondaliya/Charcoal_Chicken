@@ -26,7 +26,7 @@ const ReviewSchema = new mongoose.Schema(
     comment: {
       type: String,
       required: true,
-    }
+    },
   },
   { timestamps: true, versionKey: false }
 );

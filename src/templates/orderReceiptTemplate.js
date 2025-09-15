@@ -1,7 +1,12 @@
 import { formatCurrency } from "../Utiles/Currency.js";
 
 // Generate HTML email template with modern design
-export const generateOrderReceiptHTML = (order, customerName) => {
+export const generateOrderReceiptHTML = (
+  order,
+  customerName,
+  imageurl,
+  restaurantName
+) => {
   const {
     orderNumber,
     items,
@@ -79,6 +84,12 @@ export const generateOrderReceiptHTML = (order, customerName) => {
           opacity: 0.9;
         }
         
+        .header img {
+          max-width: 150px;
+          height: auto;
+          margin-bottom: 15px;
+        }
+        
         .content {
           padding: 40px 30px;
         }
@@ -131,12 +142,15 @@ export const generateOrderReceiptHTML = (order, customerName) => {
         }
         
         .status-delivered { background-color: #bee3f8; color: #2b6cb0; }
+        .status-pending { background-color: #fefcbf; color: #b7791f; }
+        .status-paid { background-color: #c6f6d5; color: #2f855a; }
+        .status-unpaid { background-color: #fed7d7; color: #c53030; }
         
         .section-title {
           font-size: 20px;
           font-weight: 600;
           color: #2d3748;
-          margin-bottom: 20px;
+          margin-bottom: 10px;
           padding-bottom: 8px;
           border-bottom: 2px solid #e2e8f0;
         }
@@ -261,7 +275,6 @@ export const generateOrderReceiptHTML = (order, customerName) => {
           margin: 30px 0;
         }
         
-        /* Mobile responsiveness */
         @media only screen and (max-width: 600px) {
           .email-container {
             margin: 0 5px;
@@ -300,8 +313,11 @@ export const generateOrderReceiptHTML = (order, customerName) => {
     <body>
       <div class="email-container">
         <div class="header">
-          <img src="YOUR_LOGO_URL_HERE" alt="Restaurant Logo">
-          <h2>Thank You for Your Order!</h2>
+          <img src="${
+            imageurl || "https://via.placeholder.com/150"
+          }" alt="Restaurant Logo">
+          <h1>Thank You for Your Order!</h1>
+          <p class="subtitle">Order #${orderNumber || order._id || "N/A"}</p>
         </div>
         
         <div class="content">
@@ -312,7 +328,7 @@ export const generateOrderReceiptHTML = (order, customerName) => {
           </div>
           
           <p style="margin-bottom: 30px; color: #4a5568; font-size: 16px;">
-          Your order has been successfully delivered. We hope you enjoy your meal!
+            Your order has been successfully delivered. We hope you enjoy your meal!
           </p>
           
           <div class="order-info-grid">
@@ -459,16 +475,19 @@ export const generateOrderReceiptHTML = (order, customerName) => {
           `
               : ""
           }
-         
         </div>
         
         <div class="footer">
           <div class="footer-message">Thank you for choosing us! 🍽️</div>
           <div class="footer-signature">
             Best regards,<br>
-            <strong>Your Restaurant Team</strong><br>
+            <strong>${
+              restaurantName || "Charcoal Chicken"
+            } Restaurant Team</strong><br>
             <small>Need help? Reply to this email or contact our support team.</small>
-            &copy; {{year}} {{restaurant_name}}. All rights reserved.
+            &copy;  ${new Date().getFullYear()} ${
+    restaurantName || "Charcoal Chicken"
+  }. All rights reserved.
           </div>
         </div>
       </div>
@@ -478,7 +497,11 @@ export const generateOrderReceiptHTML = (order, customerName) => {
 };
 
 // Generate text email template (for fallback)
-export const generateOrderReceiptText = (order, customerName) => {
+export const generateOrderReceiptText = (
+  order,
+  customerName,
+  restaurantName
+) => {
   const {
     orderNumber,
     items,
@@ -507,7 +530,6 @@ export const generateOrderReceiptText = (order, customerName) => {
 
   const formattedDate = formatDate(createdAt);
 
-  // Format items for text email
   const itemsText =
     items && items.length > 0
       ? items
@@ -527,17 +549,18 @@ export const generateOrderReceiptText = (order, customerName) => {
             const itemTotal = itemPrice * itemQuantity;
 
             return `${index + 1}. ${itemName}
-   Quantity: ${itemQuantity}
-   Price: ${formatCurrency(itemPrice)}
-   Subtotal: ${formatCurrency(itemTotal)}`;
+          Quantity: ${itemQuantity}
+          Price: ${formatCurrency(itemPrice)}
+          Subtotal: ${formatCurrency(itemTotal)}`;
           })
           .join("\n\n")
       : "No items found";
-
   return `
+
 ═══════════════════════════════════════
           ORDER DELIVERED SUCCESSFULLY
 ═══════════════════════════════════════
+From: ${restaurantName || ""}
 
 Hello ${customerName || deliveryAddress?.FullName || "Valued Customer"},
 
@@ -591,10 +614,10 @@ City: ${deliveryAddress.City || "N/A"} ${deliveryAddress.ZIPCode || "N/A"}`
 }
 ═══════════════════════════════════════
 
-Thank you for choosing us!
+Thank you for choosing ${restaurantName || "Charcoal Chicken"}!
 
 Best regards,
-Your Restaurant Team
+${restaurantName || "Charcoal Chicken"} Team
 
 Need help? Reply to this email or contact our support team.
   `;
