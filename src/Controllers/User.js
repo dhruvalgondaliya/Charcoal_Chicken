@@ -3,6 +3,7 @@ import restaurant from "../Models/Restaurant.js";
 import User from "../Models/User.js";
 import jwt from "jsonwebtoken";
 import { sendMail } from "../services/emailService.js";
+import { otpEmailTemplate } from "../templates/ForgotPasswordOtpTemp.js";
 
 // USer Register
 export const UserRegistration = async (req, res) => {
@@ -243,11 +244,7 @@ export const otpSendApi = async (req, res) => {
     await account.save();
 
     // Send OTP email
-    await sendMail(
-      email,
-      "Your OTP Code",
-      `Your OTP is ${otp}. It expires in 5 minutes.`
-    );
+    await sendMail(email, "Your OTP Code",`Your OTP is ${otp}. It expires in 5 minutes.`, otpEmailTemplate(otp));
 
     res.json({ message: `OTP sent to ${accountType} email ${otp}` });
   } catch (err) {
@@ -319,7 +316,7 @@ export const newPasswordApi = async (req, res) => {
     await account.save();
 
     res.json({
-      message: `${accountType} password has been reset successfully`,
+      message: `your password has been reset successfully`,
     });
   } catch (err) {
     console.error(err);

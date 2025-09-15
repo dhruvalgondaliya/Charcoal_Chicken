@@ -4,7 +4,7 @@ import rateLimit from "express-rate-limit";
 
 // Limit to 3 requests per 2 minutes per IP
 const receiptLimiter = rateLimit({
-  windowMs: 2 * 60 * 1000, // 2 minutes
+  windowMs: 2 * 60 * 1000, 
   max: 3,
   message: {
     success: false,

@@ -438,7 +438,9 @@ export const updateCategory = async (req, res) => {
       (cat) => cat._id.toString() === categoryId
     );
     if (categoryIndex === -1)
-      return res.status(404).json({ message: "Category not found in this menu" });
+      return res
+        .status(404)
+        .json({ message: "Category not found in this menu" });
 
     // Update category
     const updatedCategory = await CategorySch.findByIdAndUpdate(
@@ -643,7 +645,7 @@ export const deleteItemCategory = async (req, res) => {
       return res.status(404).json({ message: "Item not found" });
     }
 
-    // Remove the item from category.items if 
+    // Remove the item from category.items if
     category.items.pull(new mongoose.Types.ObjectId(itemId));
     await category.save();
 

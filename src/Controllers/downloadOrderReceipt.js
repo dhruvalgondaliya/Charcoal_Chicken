@@ -1,5 +1,6 @@
 import PDFDocument from "pdfkit";
 import OrderSche from "../Models/OrderSch.js";
+import UserProSch from "../Models/UserProfiles.js";
 import { formatCurrency } from "../Utiles/Currency.js";
 
 export const getOrderReceipt = async (req, res) => {
@@ -20,17 +21,23 @@ export const getOrderReceipt = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
+    // Fetch user profile to get the logo (imageurl)
+    const userProfile = await UserProSch.findOne({
+      restaurantId: order.restaurantId,
+    });
+    const imageurl = userProfile?.imageurl || "https://via.placeholder.com/150";
+
     const date = new Date(order.createdAt);
-    //  Calculate subtotal from items
+    // Calculate subtotal from items
     let subTotal = 0;
     order.items.forEach((item) => {
       const price = item?.variant?.price || item?.menuItemId?.price || 0;
       subTotal += price * item.quantity;
     });
 
-    // Apply discount (prefer order.discount, fallback to discountAmount)
+    // Apply discount
     const discount = order.discount || order.discountAmount || 0;
-    // Show subtotal, discount, and total as per order object
+    // Show subtotal, discount, and total
     const subTotalFromOrder = order.subTotal || subTotal;
     const totalAmountFromOrder =
       order.totalAmount || subTotalFromOrder - discount;
@@ -63,7 +70,6 @@ export const getOrderReceipt = async (req, res) => {
         .stroke();
     };
 
-    // Helper function for adding spacing
     const addSpace = (points = 10) => {
       doc.y += points;
     };
@@ -75,12 +81,28 @@ export const getOrderReceipt = async (req, res) => {
     const contentWidth = rightMargin - leftMargin;
 
     // === HEADER SECTION ===
+    // Add restaurant logo
+    try {
+      doc.image(imageurl, leftMargin, 20, {
+        width: 100,
+        align: "left",
+      });
+    } catch (imageError) {
+      console.error("Error loading logo image:", imageError.message);
+      doc
+        .fillColor("#2c3e50")
+        .fontSize(12)
+        .font("Helvetica")
+        .text("Restaurant Logo", leftMargin, 20);
+    }
+
     // Move cursor below logo before writing title
+    doc.y = 100;
     doc
       .fillColor("#2c3e50")
       .fontSize(24)
       .font("Helvetica-Bold")
-      .text("ORDER RECEIPT", leftMargin, 50, {
+      .text("ORDER RECEIPT", leftMargin, doc.y, {
         align: "center",
         width: contentWidth,
       });
@@ -98,7 +120,7 @@ export const getOrderReceipt = async (req, res) => {
       .font("Helvetica-Bold")
       .text("Restaurant Information", leftMargin, doc.y);
 
-    addSpace(15);
+    addSpace(1);
 
     doc.fillColor("#2c3e50");
     doc
@@ -116,6 +138,11 @@ export const getOrderReceipt = async (req, res) => {
     if (order.restaurantId?.phone) {
       addSpace(5);
       doc.text(`Phone: ${order.restaurantId.phone}`, leftMargin, doc.y);
+    }
+
+    if (order.restaurantId?.email) {
+      addSpace(5);
+      doc.text(`Email: ${order.restaurantId.email}`, leftMargin, doc.y);
     }
 
     addSpace(25);
@@ -220,7 +247,7 @@ export const getOrderReceipt = async (req, res) => {
       .fontSize(11)
       .font("Helvetica")
       .fillColor("#7f8c8d")
-      .text(`${order.paymentMethod}`, rightColX, orderInfoY + 74);
+      .text(`${order.paymentMethod || "N/A"}`, rightColX, orderInfoY + 74);
 
     doc.y = orderInfoY + 90;
     addSpace(20);
@@ -313,7 +340,7 @@ export const getOrderReceipt = async (req, res) => {
       // Extract price from your actual nested data structure
       const price = item.variant?.price || item.price || 0; // Use variant.price first
       const qty = item.quantity || 0;
-      const lineTotal = qty * price; // Calculate: variant.price * quantity
+      const lineTotal = qty * price;
 
       const rowY = doc.y;
 
@@ -431,7 +458,7 @@ export const getOrderReceipt = async (req, res) => {
 
       doc
         .fontSize(isBold || isTotal ? 12 : 11)
-        .font(isBold || isTotal ? "Helvetica-Bold" : "Helvetica")
+        .font("Helvetica-Bold")
         .text(label, summaryLabelX, currentY + (isTotal ? 5 : 0))
         .text(value, summaryValueX - 100, currentY + (isTotal ? 5 : 0), {
           align: "right",
@@ -465,7 +492,7 @@ export const getOrderReceipt = async (req, res) => {
       true
     );
 
-    addSpace(40);
+    addSpace(10);
 
     // === FOOTER SECTION ===
     drawLine(leftMargin, doc.y, rightMargin, doc.y);

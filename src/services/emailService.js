@@ -11,16 +11,23 @@ const transporter = nodemailer.createTransport(mailConfig);
 export const sendOrderReceiptEmail = async (
   order,
   customerEmail,
-  customerName
+  customerName,
+  imageurl = null,
+  restaurantName = null
 ) => {
   const orderNumber = order.orderNumber || order._id;
 
   const mailOptions = {
-    from: `"Your Restaurant" <${mailConfig.auth.user}>`,
+    from: `"${restaurantName || ""}" <${mailConfig.auth.user}>`,
     to: customerEmail,
     subject: `Order Receipt - Order #${orderNumber}`,
-    text: generateOrderReceiptText(order, customerName),
-    html: generateOrderReceiptHTML(order, customerName),
+    text: generateOrderReceiptText(order, customerName, restaurantName),
+    html: generateOrderReceiptHTML(
+      order,
+      customerName,
+      imageurl,
+      restaurantName
+    ),
   };
 
   try {
