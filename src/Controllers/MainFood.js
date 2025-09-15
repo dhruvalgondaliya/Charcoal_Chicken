@@ -23,7 +23,7 @@ export const createMenu = async (req, res) => {
     // check for duplicate menu name in the same restaurant
     const existingMenu = await Menu.findOne({
       restaurantId,
-      title: { $regex: new RegExp(`^${title.trim()}$`, "i") },
+      title: { $regex: new RegExp(`^${title.trim()}$`, "i") }
     });
 
     if (existingMenu) {
@@ -33,17 +33,17 @@ export const createMenu = async (req, res) => {
     const menu = await Menu.create({
       restaurantId,
       title: title.trim(),
-      description,
+      description
     });
 
     res.status(201).json({
       message: "Menu created successFully",
-      data: menu,
+      data: menu
     });
   } catch (err) {
     res.status(500).json({
       error: "Failed to create menu",
-      message: err.message,
+      message: err.message
     });
   }
 };
@@ -65,12 +65,12 @@ export const CreateCategory = async (req, res) => {
     // Check if a category with the same name exists under the same restaurant
     const existingCategory = await CategorySch.findOne({
       restaurantId: menu.restaurantId,
-      name: { $regex: new RegExp(`^${name}$`, "i") },
+      name: { $regex: new RegExp(`^${name}$`, "i") }
     });
 
     if (existingCategory) {
       return res.status(400).json({
-        message: "Category name already exists",
+        message: "Category name already exists"
       });
     }
 
@@ -79,7 +79,7 @@ export const CreateCategory = async (req, res) => {
       description,
       menuId: menu._id,
       restaurantId: menu.restaurantId,
-      items: [],
+      items: []
     });
 
     await newCategory.save();
@@ -90,12 +90,12 @@ export const CreateCategory = async (req, res) => {
 
     res.status(201).json({
       message: "Category created successfully",
-      data: newCategory,
+      data: newCategory
     });
   } catch (err) {
     res.status(500).json({
       error: "Failed to create category",
-      message: err.message,
+      message: err.message
     });
   }
 };
@@ -129,7 +129,7 @@ export const addItemToCategory = async (req, res) => {
       ...req.body,
       imageUrl,
       restaurantId: menu.restaurantId,
-      categoryId: categoryId,
+      categoryId: categoryId
     };
 
     // Create and save the item
@@ -141,7 +141,7 @@ export const addItemToCategory = async (req, res) => {
 
     res.status(201).json({
       message: "Item created successfully",
-      data: newItem,
+      data: newItem
     });
   } catch (err) {
     console.error("Error creating item:", err);
@@ -154,7 +154,7 @@ export const getAllMenus = async (req, res) => {
   try {
     const menus = await Menu.find().populate({
       path: "categories",
-      populate: { path: "items" },
+      populate: { path: "items" }
     });
 
     console.log("testing fetch category", menus[0].categories);
@@ -162,12 +162,12 @@ export const getAllMenus = async (req, res) => {
     res.status(200).json({
       message: "All Menus fetched successfully",
       totalMenus: menus.length,
-      data: menus,
+      data: menus
     });
   } catch (err) {
     res.status(500).json({
       error: "Failed to fetch all menus",
-      errorMessage: err.message,
+      errorMessage: err.message
     });
   }
 };
@@ -179,7 +179,7 @@ export const getMenusByRestaurant = async (req, res) => {
 
   try {
     const query = {
-      restaurantId: new mongoose.Types.ObjectId(restaurantId),
+      restaurantId: new mongoose.Types.ObjectId(restaurantId)
     };
 
     if (search) {
@@ -195,20 +195,21 @@ export const getMenusByRestaurant = async (req, res) => {
       .limit(parseInt(limit))
       .populate({
         path: "categories",
-        populate: { path: "items" },
-      });
+        populate: { path: "items" }
+      })
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       message: "Menus fetched successfully",
       totalMenus,
       currentPage: parseInt(page),
       totalPages,
-      data: menus,
+      data: menus
     });
   } catch (err) {
     res.status(500).json({
       error: "Failed to fetch menus for the restaurant",
-      message: err.message,
+      message: err.message
     });
   }
 };
@@ -229,12 +230,12 @@ export const getMenuNamesByRestaurant = async (req, res) => {
 
     res.status(200).json({
       message: "Menu names fetched successfully",
-      data: menus,
+      data: menus
     });
   } catch (err) {
     res.status(500).json({
       error: "Failed to fetch menu names",
-      message: err.message,
+      message: err.message
     });
   }
 };
@@ -252,7 +253,7 @@ export const getRestaurantCategories = async (req, res) => {
     // Build query with search and restaurantId
     const query = {
       restaurantId,
-      name: { $regex: search, $options: "i" },
+      name: { $regex: search, $options: "i" }
     };
 
     // Count total matching categories
@@ -262,6 +263,7 @@ export const getRestaurantCategories = async (req, res) => {
     const categories = await CategorySch.find(query)
       .populate("menuId", "title")
       .populate("items")
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNumber);
 
@@ -276,7 +278,7 @@ export const getRestaurantCategories = async (req, res) => {
     // Attach menuName to each category
     const categoriesWithMenuName = categories.map((cat) => ({
       ...cat.toObject(),
-      menuName: menu.name,
+      menuName: menu.name
     }));
 
     res.status(200).json({
@@ -284,12 +286,12 @@ export const getRestaurantCategories = async (req, res) => {
       totalCategories,
       currentPage: pageNumber,
       totalPages: Math.ceil(totalCategories / limitNumber),
-      data: categoriesWithMenuName || [],
+      data: categoriesWithMenuName || []
     });
   } catch (err) {
     res.status(500).json({
       error: "Failed to fetch categories for the restaurant",
-      message: err.message,
+      message: err.message
     });
   }
 };
@@ -310,12 +312,12 @@ export const getCategoryNamesByRestaurant = async (req, res) => {
 
     res.status(200).json({
       message: "Category names fetched successfully",
-      data: categories,
+      data: categories
     });
   } catch (err) {
     res.status(500).json({
       error: "Failed to fetch category names",
-      message: err.message,
+      message: err.message
     });
   }
 };
@@ -330,8 +332,8 @@ export const getItemsByRestaurant = async (req, res) => {
       restaurantId,
       $or: [
         { name: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-      ],
+        { description: { $regex: search, $options: "i" } }
+      ]
     };
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -339,7 +341,8 @@ export const getItemsByRestaurant = async (req, res) => {
       .find(query)
       .populate("categoryId", "name")
       .skip(skip)
-      .limit(parseInt(limit));
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 });
     const totalPromise = foodItemSch.countDocuments(query);
 
     const [items, total] = await Promise.all([itemsPromise, totalPromise]);
@@ -350,7 +353,7 @@ export const getItemsByRestaurant = async (req, res) => {
       total,
       page: parseInt(page),
       limit: parseInt(limit),
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(total / limit)
     });
   } catch (err) {
     console.error("Error fetching items:", err);
@@ -364,12 +367,12 @@ export const getMenuById = async (req, res) => {
     if (!menu) return res.status(404).json({ message: "Menu not found" });
     const menu = await Menu.findById(req.params.menuId).populate({
       path: "categories",
-      populate: { path: "items" },
+      populate: { path: "items" }
     });
 
     res.status(200).json({
       message: "Menu fetched by ID successfully",
-      data: menu,
+      data: menu
     });
   } catch (err) {
     res
@@ -385,8 +388,8 @@ export const getCategoryById = async (req, res) => {
   try {
     const category = await Menu.findById(menuId).populate({
       path: "categories",
-      populate: { path: "items" },
-    });
+      populate: { path: "items" }
+    }).sort({ createdAt: -1 });
 
     if (!category) {
       return res.status(404).json({ messages: "category Not Found" });
@@ -396,13 +399,13 @@ export const getCategoryById = async (req, res) => {
       success: true,
       message: "Category Fetch By Id SuccessFully",
       totalCategory: category.length,
-      data: category,
+      data: category
     });
   } catch (err) {
     res.status(500).json({
       success: false,
       message: "Failed to Fetch Category",
-      error: err.message,
+      error: err.message
     });
   }
 };
@@ -412,7 +415,7 @@ export const updateMenu = async (req, res) => {
   try {
     const menu = await Menu.findByIdAndUpdate(req.params.menuId, req.body, {
       new: true,
-      runValidators: true,
+      runValidators: true
     });
 
     if (!menu) return res.status(404).json({ message: "Menu not found" });
@@ -460,13 +463,13 @@ export const updateCategory = async (req, res) => {
       message: "Category updated successfully",
       data: {
         ...updatedCategory.toObject(),
-        menuId: { _id: menu._id, title: menu.title },
-      },
+        menuId: { _id: menu._id, title: menu.title }
+      }
     });
   } catch (err) {
     res.status(500).json({
       error: "Failed to update category",
-      message: "An error occurred while updating the category",
+      message: "An error occurred while updating the category"
     });
   }
 };
@@ -508,7 +511,7 @@ export const updateItemInCategory = async (req, res) => {
     const updatedData = {
       name,
       description,
-      hasVariants: hasVariants === "true" || hasVariants === true,
+      hasVariants: hasVariants === "true" || hasVariants === true
     };
 
     // Handle variants
@@ -519,7 +522,7 @@ export const updateItemInCategory = async (req, res) => {
         // JSON array case
         parsedVariants = req.body.variants.map((v) => ({
           size: v.size,
-          price: parseFloat(v.price || 0),
+          price: parseFloat(v.price || 0)
         }));
       } else {
         // Form-data case
@@ -527,7 +530,7 @@ export const updateItemInCategory = async (req, res) => {
         while (req.body[`variants[${i}][size]`]) {
           parsedVariants.push({
             size: req.body[`variants[${i}][size]`],
-            price: parseFloat(req.body[`variants[${i}][price]`] || "0"),
+            price: parseFloat(req.body[`variants[${i}][price]`] || "0")
           });
           i++;
         }
@@ -542,7 +545,7 @@ export const updateItemInCategory = async (req, res) => {
     if (Array.isArray(req.body.addOns)) {
       updatedData.addOns = req.body.addOns.map((a) => ({
         name: a.name,
-        price: parseFloat(a.price || 0),
+        price: parseFloat(a.price || 0)
       }));
     } else if (req.body["addOns[0][name]"]) {
       let j = 0;
@@ -550,7 +553,7 @@ export const updateItemInCategory = async (req, res) => {
       while (req.body[`addOns[${j}][name]`]) {
         parsedAddOns.push({
           name: req.body[`addOns[${j}][name]`],
-          price: parseFloat(req.body[`addOns[${j}][price]`] || "0"),
+          price: parseFloat(req.body[`addOns[${j}][price]`] || "0")
         });
         j++;
       }
@@ -574,12 +577,12 @@ export const updateItemInCategory = async (req, res) => {
 
     res.status(200).json({
       message: "Item updated successfully",
-      data: updatedItem,
+      data: updatedItem
     });
   } catch (err) {
     res.status(500).json({
       message: "Failed to update item",
-      err: err.message,
+      err: err.message
     });
   }
 };
@@ -620,12 +623,12 @@ export const deleteCategory = async (req, res) => {
 
     res.status(200).json({
       message: "Category deleted successfully",
-      data: menu,
+      data: menu
     });
   } catch (err) {
     res.status(500).json({
       message: "Failed to delete category",
-      error: err.message,
+      error: err.message
     });
   }
 };
@@ -650,13 +653,13 @@ export const deleteItemCategory = async (req, res) => {
     await category.save();
 
     res.status(200).json({
-      message: "Item deleted successfully",
+      message: "Item deleted successfully"
     });
   } catch (err) {
     console.error("Error deleting item from category:", err);
     res.status(500).json({
       message: "Failed to delete item",
-      error: err.message,
+      error: err.message
     });
   }
 };
