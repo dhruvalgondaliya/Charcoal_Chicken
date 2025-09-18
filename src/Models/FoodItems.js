@@ -26,7 +26,7 @@ const foodItemSchema = new mongoose.Schema(
         return this.hasVariants;
       },
     },
-
+    
     addOns: {
       type: [addOneSchema],
       default: [],
@@ -43,12 +43,12 @@ const foodItemSchema = new mongoose.Schema(
       required: true,
     },
 
-    menuId:{
+    menuId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Menu",
-    }
+    },
   },
-  { versionKey: false }
+  { versionKey: false, timestamps: true }
 );
 
 const foodItemSch = mongoose.model("FoodItems", foodItemSchema);

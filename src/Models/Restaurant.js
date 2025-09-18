@@ -18,7 +18,7 @@ const RestaurantSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    phone: {
+    MobileNo: {
       type: Number,
       required: true,
     },

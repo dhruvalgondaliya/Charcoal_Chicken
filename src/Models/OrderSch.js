@@ -17,6 +17,7 @@ const OrderSchema = new mongoose.Schema(
       ref: "Cart",
       required: true,
     },
+    
     items: [
       {
         menuItemId: {
@@ -45,7 +46,7 @@ const OrderSchema = new mongoose.Schema(
         ],
       },
     ],
-    discount: { type: Number, default: 0 }, 
+    discount: { type: Number, default: 0 },
     couponCode: { type: String, default: null },
     subTotal: { type: Number, required: true },
     taxAmount: { type: Number, required: true },

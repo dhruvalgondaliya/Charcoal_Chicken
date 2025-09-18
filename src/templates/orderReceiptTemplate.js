@@ -314,7 +314,8 @@ export const generateOrderReceiptHTML = (
       <div class="email-container">
         <div class="header">
           <img src="${
-            imageurl || "https://via.placeholder.com/150"
+            "http://localhost:8000" + imageurl ||
+            "https://via.placeholder.com/150"
           }" alt="Restaurant Logo">
           <h1>Thank You for Your Order!</h1>
           <p class="subtitle">Order #${orderNumber || order._id || "N/A"}</p>
@@ -432,8 +433,7 @@ export const generateOrderReceiptHTML = (
               <div class="total-row">
                 <span>Discount:</span>
                 <span>-${formatCurrency(calculatedDiscount)}</span>
-              </div>
-            `
+              </div>`
                 : ""
             }
             
@@ -443,17 +443,14 @@ export const generateOrderReceiptHTML = (
               <div class="total-row">
                 <span>Delivery Charge:</span>
                 <span>${formatCurrency(calculatedDeliveryCharge)}</span>
-              </div>
-            `
+              </div>`
                 : ""
             }
-            
             <div class="total-row final">
               <span>Total Amount:</span>
               <span>${formatCurrency(calculatedTotal)}</span>
             </div>
           </div>
-          
           ${
             deliveryAddress
               ? `
@@ -475,8 +472,7 @@ export const generateOrderReceiptHTML = (
           `
               : ""
           }
-        </div>
-        
+        </div> 
         <div class="footer">
           <div class="footer-message">Thank you for choosing us! 🍽️</div>
           <div class="footer-signature">

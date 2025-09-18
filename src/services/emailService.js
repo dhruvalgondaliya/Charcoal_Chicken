@@ -12,8 +12,8 @@ export const sendOrderReceiptEmail = async (
   order,
   customerEmail,
   customerName,
-  imageurl = null,
-  restaurantName = null
+  imageurl,
+  restaurantName
 ) => {
   const orderNumber = order.orderNumber || order._id;
 

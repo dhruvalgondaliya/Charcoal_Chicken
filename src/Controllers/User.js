@@ -52,8 +52,6 @@ export const UserRegistration = async (req, res) => {
 export const loginUser = async (req, res) => {
   const { Email, Password } = req.body;
 
-  console.log(Email, Password);
-
   if (!Email || !Password) {
     return res.status(400).json({ message: "Email or Password are required!" });
   }
@@ -244,7 +242,12 @@ export const otpSendApi = async (req, res) => {
     await account.save();
 
     // Send OTP email
-    await sendMail(email, "Your OTP Code",`Your OTP is ${otp}. It expires in 5 minutes.`, otpEmailTemplate(otp));
+    await sendMail(
+      email,
+      "Your OTP Code",
+      `Your OTP is ${otp}. It expires in 5 minutes.`,
+      otpEmailTemplate(otp)
+    );
 
     res.json({ message: `OTP sent to ${accountType} email ${otp}` });
   } catch (err) {

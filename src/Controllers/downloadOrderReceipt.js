@@ -96,7 +96,6 @@ export const getOrderReceipt = async (req, res) => {
         .text("Restaurant Logo", leftMargin, 20);
     }
 
-    // Move cursor below logo before writing title
     doc.y = 100;
     doc
       .fillColor("#2c3e50")

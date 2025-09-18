@@ -6,7 +6,6 @@ import mongoose from "mongoose";
 // Create Review by user
 export const createReview = async (req, res) => {
   const { userId, restaurantId, orderId } = req.params;
-  console.log("Review Params:", { userId, restaurantId, orderId });
 
   const { rating, comment } = req.body;
 
@@ -209,7 +208,7 @@ export const EditReviewByUser = async (req, res) => {
   }
 };
 
-// Delete RestaurantReview by Restaurant admin 
+// Delete RestaurantReview by Restaurant admin
 export const deleteRestaurantReview = async (req, res) => {
   const { userId, restaurantId } = req.params;
 

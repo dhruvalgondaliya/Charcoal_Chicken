@@ -78,7 +78,7 @@ export const loginRestaurant = async (req, res) => {
     const token = jwt.sign(
       { id: resto._id, role: resto.role },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" }
+      { expiresIn: "12h" }
     );
 
     // From your backend
@@ -107,7 +107,7 @@ export const loginRestaurant = async (req, res) => {
   }
 };
 
-// get all Restaurants for admin fetch
+// get all Restaurants for admin
 export const getAllRestaurants = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
@@ -154,7 +154,7 @@ export const getAllRestaurants = async (req, res) => {
   }
 };
 
-// Notification api
+// Notification api for admin
 export const getnotification = async (req, res) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Access denied." });
@@ -172,7 +172,7 @@ export const getnotification = async (req, res) => {
   }
 };
 
-//Restaurant GetById
+// Restaurant GetById
 export const RestoFindById = async (req, res) => {
   try {
     const getResto = await restaurant.findById(req.params.id);

@@ -64,7 +64,7 @@ export const createOrder = async (req, res) => {
       couponCode: cart.couponCode || null,
       taxAmount: taxAmount,
       deliveryCharge: deliveryCharge,
-      totalAmount: totalAmount
+      totalAmount: totalAmount,
     });
 
     cart.items = [];
@@ -75,12 +75,12 @@ export const createOrder = async (req, res) => {
 
     res.status(201).json({
       message: "Order placed successfully",
-      data: order
+      data: order,
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to place order",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -97,12 +97,12 @@ export const getAllOrder = async (req, res) => {
       messages: "All Order Fetch SuccessFully!",
       totalOrder: orders.length,
       data: orders,
-      orderId: newOrder._id
+      orderId: newOrder._id,
     });
   } catch (error) {
     res.status(500).json({
       messages: "Failed To Fetch All Order",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -124,8 +124,8 @@ export const getUserByIdOrder = async (req, res) => {
       searchFilter = {
         $or: [
           { orderStatus: { $regex: search, $options: "i" } },
-          { paymentStatus: { $regex: search, $options: "i" } }
-        ]
+          { paymentStatus: { $regex: search, $options: "i" } },
+        ],
       };
     }
 
@@ -141,7 +141,7 @@ export const getUserByIdOrder = async (req, res) => {
     // Count total for pagination
     const totalOrders = await OrderSche.countDocuments({
       userId,
-      ...searchFilter
+      ...searchFilter,
     });
 
     if (!orders || orders.length === 0) {
@@ -188,14 +188,14 @@ export const getUserByIdOrder = async (req, res) => {
               quantity: i.quantity,
               total:
                 (i.quantity || 0) *
-                (i.variant?.price || i.menuItemId?.price || 0)
+                (i.variant?.price || i.menuItemId?.price || 0),
             })),
             subtotal,
             taxAmount,
             deliveryCharge,
             totalAmount,
-            paymentStatus: order.paymentStatus === "paid" ? "Paid" : "Pending"
-          }
+            paymentStatus: order.paymentStatus === "paid" ? "Paid" : "Pending",
+          },
         };
       }
 
@@ -206,7 +206,7 @@ export const getUserByIdOrder = async (req, res) => {
         taxAmount,
         deliveryCharge,
         totalAmount,
-        user: order.userId
+        user: order.userId,
       };
     });
 
@@ -217,13 +217,13 @@ export const getUserByIdOrder = async (req, res) => {
         totalOrders,
         totalPages: Math.ceil(totalOrders / limitNumber),
         currentPage: pageNumber,
-        pageSize: limitNumber
-      }
+        pageSize: limitNumber,
+      },
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to fetch user orders",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -238,7 +238,7 @@ export const getRestaurantOrders = async (req, res) => {
     orderStatus,
     paymentStatus,
     startDate,
-    endDate
+    endDate,
   } = req.query;
 
   try {
@@ -252,7 +252,7 @@ export const getRestaurantOrders = async (req, res) => {
         { "deliveryAddress.City": { $regex: search, $options: "i" } },
         { paymentStatus: { $regex: search, $options: "i" } },
         { orderStatus: { $regex: search, $options: "i" } },
-        { paymentMethod: { $regex: search, $options: "i" } }
+        { paymentMethod: { $regex: search, $options: "i" } },
       ];
 
       // If search looks like ObjectId
@@ -319,7 +319,7 @@ export const getRestaurantOrders = async (req, res) => {
         deliveryCharge,
         discount,
         couponCode,
-        totalAmount
+        totalAmount,
       };
     });
 
@@ -328,7 +328,7 @@ export const getRestaurantOrders = async (req, res) => {
     // Grand total (only delivered orders, case-insensitive)
     const deliveredOrders = await OrderSche.find({
       ...query,
-      orderStatus: { $regex: /^delivered$/i }
+      orderStatus: { $regex: /^delivered$/i },
     });
 
     const grandTotal = deliveredOrders.reduce((sum, order) => {
@@ -357,13 +357,13 @@ export const getRestaurantOrders = async (req, res) => {
         total,
         totalPages: Math.ceil(total / limit),
         currentPage: Number(page),
-        grandTotal
-      }
+        grandTotal,
+      },
     });
   } catch (error) {
     res.status(500).json({
       message: "Failed to fetch orders",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -378,7 +378,7 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
     "preparing",
     "on the way",
     "delivered",
-    "cancelled"
+    "cancelled",
   ];
 
   const validPaymentStatuses = ["pending", "paid", "failed"];
@@ -424,7 +424,7 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
       // Fetch imageurl from UserProSch based on restaurantId
       if (updatedOrder.restaurantId) {
         const restaurantProfile = await UserProSch.findOne({
-          restaurantId: updatedOrder.restaurantId
+          restaurantId: updatedOrder.restaurantId,
         });
         imageurl =
           restaurantProfile?.imageurl || "https://via.placeholder.com/150";
@@ -457,13 +457,13 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
 
     res.status(200).json({
       message: "Order and payment status updated successfully",
-      data: updatedOrder
+      data: updatedOrder,
     });
   } catch (error) {
     console.error("Failed to update order:", error.message);
     res.status(500).json({
       message: "Failed to update statuses",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -490,20 +490,20 @@ export const cancelUserOrder = async (req, res) => {
 
     if (!cancelledOrder) {
       return res.status(404).json({
-        message: "Order not found or doesn't belong to this user"
+        message: "Order not found or doesn't belong to this user",
       });
     }
 
     res.status(200).json({
       success: true,
       message: "Order cancelled successfully",
-      data: cancelledOrder
+      data: cancelledOrder,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: "Failed to cancel user order",
-      error: error.message
+      error: error.message,
     });
   }
 };
