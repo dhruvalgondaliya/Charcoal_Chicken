@@ -17,7 +17,6 @@ const OrderSchema = new mongoose.Schema(
       ref: "Cart",
       required: true,
     },
-    
     items: [
       {
         menuItemId: {
@@ -52,7 +51,6 @@ const OrderSchema = new mongoose.Schema(
     taxAmount: { type: Number, required: true },
     deliveryCharge: { type: Number, required: true },
     totalAmount: { type: Number, required: true },
-
     deliveryAddress: {
       FullName: { type: String, required: true },
       PhoneNumber: { type: String, required: true },

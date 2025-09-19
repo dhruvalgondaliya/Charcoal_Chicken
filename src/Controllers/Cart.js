@@ -183,11 +183,11 @@ export const fetchCartByUserId = async (req, res) => {
     }
 
     // Always recalc values from cart items
-    const cartLength = cart.items.length; // ✅ distinct items count
+    const cartLength = cart.items.length;
     const totalQuantity = cart.items.reduce(
       (acc, item) => acc + (item.quantity || 1),
       0
-    ); // ✅ total item quantity
+    );
 
     const totalAmountBeforeTax = cart.items.reduce((acc, item) => {
       return acc + (Number(item.price) || 0) * (item.quantity || 1);
@@ -223,15 +223,12 @@ export const fetchCartByUserId = async (req, res) => {
         (totalAmountBeforeTax + taxAmount + deliveryCharge - discount) * 100
       ) / 100;
 
-    // ❌ Don’t persist calculated values in DB (keeps things stale)
-    // Just return them in response
-
     res.status(200).json({
       message: "Cart fetched successfully",
       data: {
         ...cart.toObject(),
-        cartLength, // ✅ number of distinct items
-        totalQuantity, // ✅ sum of all quantities
+        cartLength,
+        totalQuantity,
         totalAmount,
         totalAmountBeforeTax,
         taxAmount,
@@ -460,7 +457,7 @@ export const applyCoupon = async (req, res) => {
     if (cart.couponCode) {
       return res
         .status(400)
-        .json({ message: "Coupon already applied for this order" });
+        .json({ message: "Coupon already apply for this order" });
     }
 
     const coupon = validateCoupon(couponCode);
