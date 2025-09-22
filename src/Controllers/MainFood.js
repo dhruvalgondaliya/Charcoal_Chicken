@@ -658,7 +658,6 @@ export const deleteItemCategory = async (req, res) => {
       message: "Item deleted successfully",
     });
   } catch (err) {
-    console.error("Error deleting item from category:", err);
     res.status(500).json({
       message: "Failed to delete item",
       error: err.message,

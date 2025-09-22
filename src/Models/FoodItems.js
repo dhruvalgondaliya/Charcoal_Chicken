@@ -26,7 +26,7 @@ const foodItemSchema = new mongoose.Schema(
         return this.hasVariants;
       },
     },
-    
+
     addOns: {
       type: [addOneSchema],
       default: [],

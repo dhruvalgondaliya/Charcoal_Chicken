@@ -7,6 +7,10 @@ const CartItemSchema = new mongoose.Schema({
     ref: "FoodItems",
     required: true,
   },
+  restaurantId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Restaurant",
+  },
   quantity: {
     type: Number,
     required: true,

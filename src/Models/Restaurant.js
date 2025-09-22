@@ -26,7 +26,6 @@ const RestaurantSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-
     cuisines: [{ type: String, required: true }],
     status: {
       type: String,
