@@ -39,6 +39,10 @@ const CartSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    restaurantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Restaurant",
+    },
     items: [CartItemSchema],
     subTotal: { type: Number, default: 0 },
     deliveryCharge: { type: Number, default: 0 },

@@ -96,7 +96,7 @@ export const updateCoupon = async (req, res) => {
     const coupon = await couponSch.findOneAndUpdate(
       { _id: couponId, restaurantId },
       { $set: req.body },
-      { new: true }
+      { new: true, runValidators: true }
     );
 
     if (!coupon) {

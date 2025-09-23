@@ -51,6 +51,6 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-const UserProSch = mongoose.model("UserProfiles", userSchema);
+const UserProSch = mongoose.model("RestaurantProfile", userSchema);
 
 export default UserProSch;

@@ -7,3 +7,9 @@ export const formatCurrency = (amount = 0) => {
     minimumFractionDigits: 2,
   }).format(value);
 };
+
+// Custom Rs. formatter
+export const formatCurrencyRs = (amount = 0) => {
+  const value = Number(amount) || 0;
+  return `Rs. ${value.toFixed(2)}`;
+};

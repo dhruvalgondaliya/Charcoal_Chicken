@@ -12,12 +12,12 @@ import { Review_Routes } from "./src/Routes/Review.js";
 import connectDB from "./src/Config/Server.js";
 import { Cart_Routes } from "./src/Routes/Cart.js";
 import { fileURLToPath } from "url";
-import { UserProfile_Routes } from "./src/Routes/UserProfiles.js";
+import { UserProfile_Routes } from "./src/Routes/RestaurantProfiles.js";
 import { Dashboard_Routes } from "./src/Routes/Dashboard.js";
 import { OrderReceipte_Routes } from "./src/Routes/downloadOrderReceipt.js";
 import { Coupon_Route } from "./src/Routes/CouponCode.js";
 
-// Env Confing
+// env Confing
 dotenv.config();
 
 // Server Connected
