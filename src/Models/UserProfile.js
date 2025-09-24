@@ -29,11 +29,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-
-    bio: {
-      type: String,
-      default: "",
-    },
     country: { type: String, required: true },
     city: {
       type: String,
@@ -43,14 +38,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-
-    restaurantId: {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Restaurant",
+      ref: "User",
+      required: true,
     },
   },
   { timestamps: true }
 );
-const UserProSch = mongoose.model("RestaurantProfile", userSchema);
+const UserProSch = mongoose.model("UserProfile", userSchema);
 
 export default UserProSch;

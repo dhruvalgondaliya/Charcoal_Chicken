@@ -12,10 +12,11 @@ import { Review_Routes } from "./src/Routes/Review.js";
 import connectDB from "./src/Config/Server.js";
 import { Cart_Routes } from "./src/Routes/Cart.js";
 import { fileURLToPath } from "url";
-import { UserProfile_Routes } from "./src/Routes/RestaurantProfiles.js";
+import { RestaurantProfile_Routes } from "./src/Routes/RestaurantProfiles.js";
 import { Dashboard_Routes } from "./src/Routes/Dashboard.js";
 import { OrderReceipte_Routes } from "./src/Routes/downloadOrderReceipt.js";
 import { Coupon_Route } from "./src/Routes/CouponCode.js";
+import { UserProfile_Routes } from "./src/Routes/UserProfile.js";
 
 // env Confing
 dotenv.config();
@@ -46,6 +47,7 @@ app.use(
 
 // Routes
 app.use("/user", User_Routes);
+app.use("/userProfile", UserProfile_Routes);
 app.use("/dashboard", Dashboard_Routes);
 app.use("/receipt", OrderReceipte_Routes);
 app.use("/menu", FoodMenu_Routes);
@@ -54,7 +56,7 @@ app.use("/restaurunt", Restorant_Routes);
 app.use("/order", Order_Routes);
 app.use("/review", Review_Routes);
 app.use("/cart", Cart_Routes);
-app.use("/userProfile", UserProfile_Routes);
+app.use("/restauruntProfile", RestaurantProfile_Routes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

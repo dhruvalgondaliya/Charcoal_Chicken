@@ -1,4 +1,4 @@
-import UserProSch from "../Models/UserProfiles.js";
+import restaurantProfile from "../Models/RestaurantProfiles.js";
 
 // Create
 export const CreateProfile = async (req, res) => {
@@ -11,14 +11,14 @@ export const CreateProfile = async (req, res) => {
       return res.status(400).json({ error: "Image is required" });
     }
 
-    const existingUser = await UserProSch.findOne({ email: body.email });
+    const existingUser = await restaurantProfile.findOne({ email: body.email });
     if (existingUser) {
-      return res.status(400).json({ message: "User Already Exists" });
+      return res.status(400).json({ message: "Restaurant Already Exists" });
     }
 
     const imageurl = `/uploads/${file.filename}`;
 
-    const user = new UserProSch({
+    const user = new restaurantProfile({
       ...body,
       restaurantId,
       imageurl,
@@ -27,7 +27,7 @@ export const CreateProfile = async (req, res) => {
     await user.save();
 
     res.status(201).json({
-      message: "User Profile Created Successfully",
+      message: "Restaurant Profile Created Successfully",
       data: user,
     });
   } catch (err) {
@@ -40,16 +40,16 @@ export const getUserProfiles = async (req, res) => {
   const { restaurantId } = req.params;
 
   try {
-    const getprofile = await UserProSch.findOne({ restaurantId });
+    const getprofile = await restaurantProfile.findOne({ restaurantId });
 
     if (!getprofile) {
       return res.status(404).json({
-        message: "User Profile Not Found",
+        message: "Restaurant Profile Not Found",
       });
     }
 
     res.status(200).json({
-      message: "User Profile Fetched Successfully",
+      message: "Restaurant Profile Fetched Successfully",
       data: getprofile,
     });
   } catch (error) {
@@ -64,9 +64,9 @@ export const updateUserProfile = async (req, res) => {
   try {
     const { file, body } = req;
 
-    const existingProfile = await UserProSch.findById(profileId);
+    const existingProfile = await restaurantProfile.findById(profileId);
     if (!existingProfile) {
-      return res.status(404).json({ message: "User Profile Not Found" });
+      return res.status(404).json({ message: "Restaurant Profile Not Found" });
     }
 
     // Only replace image if a new file is uploaded
@@ -79,14 +79,14 @@ export const updateUserProfile = async (req, res) => {
       imageurl,
     };
 
-    const updatedProfile = await UserProSch.findByIdAndUpdate(
+    const updatedProfile = await restaurantProfile.findByIdAndUpdate(
       profileId,
       updateData,
       { new: true }
     );
 
     res.status(200).json({
-      message: "User Profile Updated Successfully",
+      message: "Restaurant Profile Updated Successfully",
       data: updatedProfile,
     });
   } catch (error) {

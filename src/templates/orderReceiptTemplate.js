@@ -643,15 +643,12 @@ const formatDate = (date) => {
   if (!date) return "N/A";
 
   try {
-    return new Date(date).toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
+    const d = new Date(date);
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const yy = String(d.getFullYear()).slice(-2);
+
+    return `${mm}/${dd}/${yy}`;
   } catch (error) {
     console.error("Error formatting date:", error);
     return "N/A";

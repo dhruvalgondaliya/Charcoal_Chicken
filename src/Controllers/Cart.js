@@ -182,7 +182,8 @@ export const fetchCartByUserId = async (req, res) => {
         path: "items.menuItemId",
         select: "name description imageUrl price variants addOns",
       })
-      .populate("items.addOns").populate("restaurantId","name");
+      .populate("items.addOns")
+      .populate("restaurantId", "name");
 
     if (!cart || !cart.items || cart.items.length === 0) {
       return res

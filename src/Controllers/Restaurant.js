@@ -5,7 +5,7 @@ import {
   rejectionEmailTemplate,
 } from "../templates/EmailStatusMail.js";
 import { sendMail } from "../services/emailService.js";
-import UserProSch from "../Models/UserProfiles.js";
+import UserProSch from "../Models/RestaurantProfiles.js";
 
 // Create Restaurant
 export const createRestaurant = async (req, res) => {

@@ -20,6 +20,10 @@ const foodItemSchema = new mongoose.Schema(
       },
     },
 
+    oldPrice: {
+      type: Number,
+    },
+
     variants: {
       type: [variantSchema],
       required: function () {

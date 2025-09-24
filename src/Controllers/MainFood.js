@@ -157,8 +157,6 @@ export const getAllMenus = async (req, res) => {
       populate: { path: "items" },
     });
 
-    console.log("testing fetch category", menus[0].categories);
-
     res.status(200).json({
       message: "All Menus fetched successfully",
       totalMenus: menus.length,
