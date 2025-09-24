@@ -1,7 +1,7 @@
 import PDFDocument from "pdfkit";
 import OrderSche from "../Models/OrderSch.js";
 import UserProSch from "../Models/UserProfiles.js";
-import { formatCurrency } from "../Utiles/Currency.js";
+import { formatCurrency, formatCurrencyRs } from "../Utiles/Currency.js";
 
 export const getOrderReceipt = async (req, res) => {
   try {
@@ -422,12 +422,12 @@ export const getOrderReceipt = async (req, res) => {
       });
 
       // Price (variant price)
-      doc.text(formatCurrency(price), table.cols.price.x, textY, {
+      doc.text(formatCurrencyRs(price), table.cols.price.x, textY, {
         width: table.cols.price.width,
         align: "center",
       });
 
-      doc.text(formatCurrency(lineTotal), table.cols.total.x, textY, {
+      doc.text(formatCurrencyRs(lineTotal), table.cols.total.x, textY, {
         width: table.cols.total.width,
         align: "center",
       });
@@ -467,17 +467,17 @@ export const getOrderReceipt = async (req, res) => {
       doc.y += isTotal ? 30 : 22;
     };
 
-    addSummaryLine("Subtotal:", formatCurrency(subTotalFromOrder));
+    addSummaryLine("Subtotal:", formatCurrencyRs(subTotalFromOrder));
 
     if (Number(discount) > 0) {
-      addSummaryLine("Discount:", `- ${formatCurrency(discount)}`);
+      addSummaryLine("Discount:", `- ${formatCurrencyRs(discount)}`);
     }
 
-    addSummaryLine("Tax:", formatCurrency(taxAmount));
+    addSummaryLine("Tax:", formatCurrencyRs(taxAmount));
 
     addSummaryLine(
       "Delivery Charge:",
-      Number(deliveryCharge) === 0 ? "FREE" : formatCurrency(deliveryCharge)
+      Number(deliveryCharge) === 0 ? "FREE" : formatCurrencyRs(deliveryCharge)
     );
 
     addSpace(5);
@@ -486,7 +486,7 @@ export const getOrderReceipt = async (req, res) => {
 
     addSummaryLine(
       "TOTAL AMOUNT:",
-      formatCurrency(totalAmountFromOrder),
+      formatCurrencyRs(totalAmountFromOrder),
       false,
       true
     );

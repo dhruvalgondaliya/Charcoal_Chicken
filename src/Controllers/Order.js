@@ -368,7 +368,7 @@ export const getRestaurantOrders = async (req, res) => {
   }
 };
 
-// update ststus and send mail
+// update status and send mail
 export const updateOrderAndPaymentStatus = async (req, res) => {
   const { orderId } = req.params;
   const { orderStatus, paymentStatus } = req.body;
@@ -400,7 +400,9 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
       orderId,
       updateFields,
       { new: true }
-    ).populate("items.menuItemId", "name price");
+    )
+      .populate("items.menuItemId", "name price")
+      .populate("restaurantId", "name");
 
     if (!updatedOrder) {
       return res.status(404).json({ message: "Order not found" });

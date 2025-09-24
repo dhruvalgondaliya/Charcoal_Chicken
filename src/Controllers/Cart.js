@@ -61,8 +61,15 @@ export const addToCart = async (req, res) => {
 
     let cart = await CartSche.findOne({ userId });
 
-    if (!cart) {
-      cart = new CartSche({ userId, items: [] });
+    if (cart.restaurantId && menuItem.restaurantId) {
+      if (cart.restaurantId.toString() !== menuItem.restaurantId.toString()) {
+        return res.status(400).json({
+          message: "You can only add items from one restaurant at a time",
+        });
+      }
+    } else {
+      // If cart.restaurantId is missing, assign it
+      cart.restaurantId = menuItem.restaurantId;
     }
 
     // Check if the same item with same variant and addons already exists
@@ -92,6 +99,7 @@ export const addToCart = async (req, res) => {
       // Add new item if it doesn't exist
       cart.items.push({
         menuItemId,
+        restaurantId: menuItem.restaurantId,
         variant: selectedVariant,
         quantity,
         addOns: validAddOns.map((a) => ({
@@ -174,7 +182,7 @@ export const fetchCartByUserId = async (req, res) => {
         path: "items.menuItemId",
         select: "name description imageUrl price variants addOns",
       })
-      .populate("items.addOns");
+      .populate("items.addOns").populate("restaurantId","name");
 
     if (!cart || !cart.items || cart.items.length === 0) {
       return res
@@ -470,7 +478,7 @@ export const applyCoupon = async (req, res) => {
       0
     );
 
-    // Rule 1: Apply only if total >= 500
+    // Apply only if total >= 500
     if (totalAmountBeforeTax < 500) {
       return res.status(400).json({
         message: "Coupon valid only for orders above ₹500",
