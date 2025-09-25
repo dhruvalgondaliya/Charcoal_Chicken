@@ -4,6 +4,7 @@ import User from "../Models/User.js";
 import jwt from "jsonwebtoken";
 import { sendMail } from "../services/emailService.js";
 import { otpEmailTemplate } from "../templates/ForgotPasswordOtpTemp.js";
+import UserProSch from "../Models/UserProfile.js";
 
 // USer Register
 export const UserRegistration = async (req, res) => {
@@ -74,6 +75,10 @@ export const loginUser = async (req, res) => {
       { expiresIn: "1d" }
     );
 
+    const userProfile = await UserProSch.findOne({
+      userId: user._id,
+    }).select("imageurl");
+
     res.status(201).json({
       success: true,
       message: "User login SuccessFully",
@@ -85,6 +90,7 @@ export const loginUser = async (req, res) => {
         gender: user.gender,
         dietaryPreferences: user.DietaryPreferences,
         role: user.role,
+        imageurl: userProfile ? userProfile.imageurl || null : null,
       },
     });
   } catch (err) {

@@ -1,9 +1,9 @@
-import OrderSche from "../Models/OrderSch.js";
-import CartSche from "../Models/Cart.js";
 import mongoose from "mongoose";
 import User from "../Models/User.js";
+import OrderSche from "../Models/OrderSch.js";
+import CartSche from "../Models/Cart.js";
 import { sendOrderReceiptEmail } from "../services/emailService.js";
-import UserProSch from "../Models/UserProfiles.js";
+import UserProSch from "../Models/RestaurantProfiles.js";
 
 // create Order Api
 export const createOrder = async (req, res) => {

@@ -1,7 +1,7 @@
 import PDFDocument from "pdfkit";
 import OrderSche from "../Models/OrderSch.js";
-import UserProSch from "../Models/UserProfiles.js";
-import { formatCurrency, formatCurrencyRs } from "../Utiles/Currency.js";
+import UserProSch from "../Models/RestaurantProfiles.js";
+import { formatCurrencyRs } from "../Utiles/Currency.js";
 
 export const getOrderReceipt = async (req, res) => {
   try {
