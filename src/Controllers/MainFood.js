@@ -455,7 +455,7 @@ export const updateCategory = async (req, res) => {
     if (!updatedCategory)
       return res.status(404).json({ message: "Category not found" });
 
-    // Update the menu's categories array (optional, depending on your schema)
+    // Update the menu's categories array
     menu.categories[categoryIndex] = updatedCategory;
     await menu.save();
 
@@ -479,11 +479,11 @@ export const updateItemInCategory = async (req, res) => {
   const { menuId, categoryId, itemId } = req.params;
 
   try {
-    // Check if menu exists
+    // Check menu exists
     const menu = await Menu.findById(menuId);
     if (!menu) return res.status(404).json({ message: "Menu not found" });
 
-    // Check if category belongs to this menu
+    // Check category belongs to this menu
     const hasCategory = menu.categories.some(
       (catId) => catId.toString() === categoryId
     );

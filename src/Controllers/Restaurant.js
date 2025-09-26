@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import {
   approvalEmailTemplate,
   rejectionEmailTemplate,
-} from "../templates/EmailStatusMail.js";
+} from "../templates/EmailRestaurantStatusMail.js";
 import { sendMail } from "../services/emailService.js";
 import UserProSch from "../Models/RestaurantProfiles.js";
 
@@ -81,7 +81,7 @@ export const loginRestaurant = async (req, res) => {
       { expiresIn: "12h" }
     );
 
-    // From your backend
+    // get userprofile Image
     const userProfile = await UserProSch.findOne({
       restaurantId: resto._id,
     }).select("imageurl");

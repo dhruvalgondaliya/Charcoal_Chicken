@@ -122,7 +122,7 @@ export const generateOrderReceiptHTML = (
           color: #718096;
           text-transform: uppercase;
           letter-spacing: 0.5px;
-          margin-bottom: 4px;
+          margin-bottom: 3px;
         }
         
         .info-value {
@@ -282,11 +282,12 @@ export const generateOrderReceiptHTML = (
           }
           
           .content {
-            padding: 25px 20px;
+            padding: 20px 15px;
           }
 
           .info-value {
             font-size: 12px;
+            margin-bottom:3px;
           }
           
           .order-info-grid {
@@ -318,7 +319,6 @@ export const generateOrderReceiptHTML = (
             "https://via.placeholder.com/150"
           }" alt="Restaurant Logo">
           <h1>Thank You for Your Order!</h1>
-          <p class="subtitle">Order #${orderNumber || order._id || "N/A"}</p>
         </div>
         
         <div class="content">
@@ -327,14 +327,14 @@ export const generateOrderReceiptHTML = (
               customerName || deliveryAddress?.FullName || "Valued Customer"
             },
           </div>
-          
+
           <p style="margin-bottom: 30px; color: #4a5568; font-size: 16px;">
             Your order has been successfully delivered. We hope you enjoy your meal!
           </p>
           
           <div class="order-info-grid">
             <div class="info-item">
-              <span class="info-label">Order Number</span>
+              <span class="info-label">Order No:</span>
               <span class="info-value">#${
                 orderNumber || order._id || "N/A"
               }</span>
@@ -409,13 +409,12 @@ export const generateOrderReceiptHTML = (
               }
             </tbody>
           </table>
-          
+
           <div class="total-section">
             <div class="total-row">
               <span>Sub Total:</span>
               <span>${formatCurrency(calculatedSubTotal)}</span>
             </div>
-            
             ${
               calculatedTax > 0
                 ? `
@@ -426,7 +425,7 @@ export const generateOrderReceiptHTML = (
             `
                 : ""
             }
-            
+
             ${
               calculatedDiscount > 0
                 ? `

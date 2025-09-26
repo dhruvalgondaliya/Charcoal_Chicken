@@ -4,6 +4,7 @@ import {
   generateOrderReceiptHTML,
   generateOrderReceiptText,
 } from "../templates/orderReceiptTemplate.js";
+import { generateOrderCancelledHTML } from "../templates/orderCancelledTemplate.js";
 
 const transporter = nodemailer.createTransport(mailConfig);
 
@@ -34,6 +35,40 @@ export const sendOrderReceiptEmail = async (
     const info = await transporter.sendMail(mailOptions);
     return info;
   } catch (error) {
+    throw error;
+  }
+};
+
+// Cancel email sender
+export const sendOrderCancelEmail = async (
+  order,
+  customerEmail,
+  customerName,
+  imageurl,
+  restaurantName
+) => {
+  const orderNumber = order.orderNumber || order._id;
+
+  const mailOptions = {
+    from: `"${restaurantName || ""}" <${mailConfig.auth.user}>`,
+    to: customerEmail,
+    subject: `Order Cancelled - Order #${orderNumber}`,
+    html: generateOrderCancelledHTML(
+      order,
+      customerName,
+      imageurl,
+      restaurantName
+    ),
+  };
+
+  console.log("📨 Sending cancel email to:", customerEmail);
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Cancel email sent:", info.messageId);
+    return info;
+  } catch (error) {
+    console.error("Error sending cancel email:", error);
     throw error;
   }
 };
