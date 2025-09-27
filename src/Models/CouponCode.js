@@ -13,6 +13,7 @@ const couponSchema = new mongoose.Schema(
       unique: true,
       trim: true,
       uppercase: true,
+      max: 12,
     },
     discountType: {
       type: String,

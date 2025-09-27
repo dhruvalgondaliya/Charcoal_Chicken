@@ -2,7 +2,10 @@ import mongoose from "mongoose";
 import User from "../Models/User.js";
 import OrderSche from "../Models/OrderSch.js";
 import CartSche from "../Models/Cart.js";
-import { sendOrderReceiptEmail } from "../services/emailService.js";
+import {
+  sendOrderCancelEmail,
+  sendOrderReceiptEmail,
+} from "../services/emailService.js";
 import UserProSch from "../Models/RestaurantProfiles.js";
 
 // create Order Api
@@ -61,14 +64,14 @@ export const createOrder = async (req, res) => {
       paymentStatus: paymentMethod === "cod" ? "pending" : "paid",
       subTotal: subTotal,
       discount: discount,
-      couponCode: cart.couponCode || null,
+      code: cart.code || null,
       taxAmount: taxAmount,
       deliveryCharge: deliveryCharge,
       totalAmount: totalAmount,
     });
 
     cart.items = [];
-    cart.couponCode = null;
+    cart.code = null;
     cart.discount = 0;
     cart.totalAmount = 0;
     await cart.save();
@@ -307,7 +310,7 @@ export const getRestaurantOrders = async (req, res) => {
       const taxAmount = Number((subtotal * taxRate).toFixed(2));
       const deliveryCharge = subtotal >= 300 ? 0 : 30;
       const discount = order.discount || 0;
-      const couponCode = order.couponCode || null;
+      const code = order.code || null;
       const totalAmount = Number(
         (subtotal + taxAmount + deliveryCharge - discount).toFixed(2)
       );
@@ -318,7 +321,7 @@ export const getRestaurantOrders = async (req, res) => {
         taxAmount,
         deliveryCharge,
         discount,
-        couponCode,
+        code,
         totalAmount,
       };
     });
@@ -408,22 +411,21 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    // Send email only when order status is "delivered"
-    if (orderStatus === "delivered") {
-      // Fetch customer email
+    // Send email when order status is "delivered"
+    const normalizedOrderStatus = orderStatus?.trim().toLowerCase();
+
+    if (normalizedOrderStatus === "delivered") {
       let customerEmail = updatedOrder.deliveryAddress?.email;
       let customerName = updatedOrder.deliveryAddress?.FullName;
       let restaurantName = updatedOrder.restaurantId?.name || null;
       let imageurl = null;
 
-      // If email is not in deliveryAddress, fetch from User model
       if (!customerEmail && updatedOrder.userId) {
         const user = await User.findById(updatedOrder.userId);
         customerEmail = user?.Email;
         customerName = user?.name || customerName;
       }
 
-      // Fetch imageurl from UserProSch based on restaurantId
       if (updatedOrder.restaurantId) {
         const restaurantProfile = await UserProSch.findOne({
           restaurantId: updatedOrder.restaurantId,
@@ -439,20 +441,18 @@ export const updateOrderAndPaymentStatus = async (req, res) => {
         console.warn("No customer email found for order:", orderId);
       } else {
         try {
-          // Send email with template
-          await sendOrderReceiptEmail(
-            updatedOrder,
-            customerEmail,
-            customerName,
-            imageurl,
-            restaurantName
-          );
-          console.log("Order receipt email sent to:", customerEmail);
+          if (normalizedOrderStatus === "delivered") {
+            await sendOrderReceiptEmail(
+              updatedOrder,
+              customerEmail,
+              customerName,
+              imageurl,
+              restaurantName
+            );
+            console.log("Delivered receipt email sent to:", customerEmail);
+          }
         } catch (emailError) {
-          console.error(
-            "Failed to send order receipt email:",
-            emailError.message
-          );
+          console.error("Failed to send email:", emailError.message);
         }
       }
     }
@@ -476,19 +476,21 @@ export const cancelUserOrder = async (req, res) => {
 
   try {
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: "Invalid User ID" });
+      return res.status(400).json({ message: "Invalid User" });
     }
 
     if (!mongoose.Types.ObjectId.isValid(OrderId)) {
-      return res.status(400).json({ message: "Invalid Order ID" });
+      return res.status(400).json({ message: "Invalid Order" });
     }
 
-    // Instead of deleting → update status to "Cancelled"
+    // Update order status to "cancelled"
     const cancelledOrder = await OrderSche.findOneAndUpdate(
       { _id: OrderId, userId },
       { $set: { orderStatus: "cancelled", cancelledAt: new Date() } },
       { new: true }
-    );
+    )
+      .populate("items.menuItemId", "name price")
+      .populate("restaurantId", "name");
 
     if (!cancelledOrder) {
       return res.status(404).json({
@@ -496,12 +498,57 @@ export const cancelUserOrder = async (req, res) => {
       });
     }
 
+    let customerEmail = cancelledOrder.deliveryAddress?.email;
+    let customerName = cancelledOrder.deliveryAddress?.FullName;
+    let restaurantName = cancelledOrder.restaurantId?.name || null;
+    let imageurl = null;
+
+    // Delivery Addres
+    if (!customerEmail && cancelledOrder.userId) {
+      const user = await User.findById(cancelledOrder.userId);
+      customerEmail = user?.Email;
+      customerName = user?.name || customerName;
+    }
+
+    // Restaurant image
+    if (cancelledOrder.restaurantId) {
+      const restaurantProfile = await UserProSch.findOne({
+        restaurantId: cancelledOrder.restaurantId,
+      });
+      imageurl =
+        restaurantProfile?.imageurl || "https://via.placeholder.com/150";
+      if (imageurl && !imageurl.startsWith("http")) {
+        imageurl = `http://localhost:8000${imageurl}`;
+      }
+    }
+
+    // sending email
+    if (customerEmail) {
+      try {
+        await sendOrderCancelEmail(
+          cancelledOrder,
+          customerEmail,
+          customerName,
+          imageurl,
+          restaurantName
+        );
+        console.log("Cancelled email sent to:", customerEmail);
+      } catch (emailErr) {
+        console.error("Failed to send cancel email:", emailErr.message);
+      }
+    } else {
+      console.warn("No customer email found for cancelled order:", OrderId);
+    }
+
+    // -----------------------------
+
     res.status(200).json({
       success: true,
-      message: "Order cancelled successfully",
+      message: "Order cancelled successfully & email sent",
       data: cancelledOrder,
     });
   } catch (error) {
+    console.error("Cancel user order error:", error.message);
     res.status(500).json({
       success: false,
       message: "Failed to cancel user order",

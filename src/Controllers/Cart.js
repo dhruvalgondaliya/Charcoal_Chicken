@@ -1,14 +1,6 @@
 import CartSche from "../Models/Cart.js";
+import couponSch from "../Models/CouponCode.js";
 import FoodItems from "../Models/FoodItems.js";
-
-// Coupon validation function
-function validateCoupon(code) {
-  const coupons = [
-    { code: "SAVE10", type: "percentage", value: 10 },
-    { code: "FLAT50", type: "fixed", value: 50 },
-  ];
-  return coupons.find((c) => c.code === code);
-}
 
 // Create Cart
 export const addToCart = async (req, res) => {
@@ -22,7 +14,7 @@ export const addToCart = async (req, res) => {
       return res.status(404).json({ message: "Menu item not found" });
     }
 
-    // Validate variant if required
+    // Validate variant
     let selectedVariant = null;
     if (menuItem.variants && menuItem.variants.length > 0) {
       if (!variantId) {
@@ -59,29 +51,39 @@ export const addToCart = async (req, res) => {
     const taxRate = 0.05;
     const taxAmount = Math.round(itemPriceBeforeTax * taxRate * 100) / 100;
 
+    // Find existing cart
     let cart = await CartSche.findOne({ userId });
 
-    if (cart.restaurantId && menuItem.restaurantId) {
-      if (cart.restaurantId.toString() !== menuItem.restaurantId.toString()) {
-        return res.status(400).json({
-          message: "You can only add items from one restaurant at a time",
-        });
-      }
-    } else {
-      // If cart.restaurantId is missing, assign it
+    if (!cart) {
+      // Create new cart if none exists
+      cart = new CartSche({
+        userId,
+        restaurantId: menuItem.restaurantId,
+        items: [],
+      });
+    } else if (
+      cart.restaurantId &&
+      cart.restaurantId.toString() !== menuItem.restaurantId.toString()
+    ) {
+      // If cart is from another restaurant, clear it
+      cart.items = [];
       cart.restaurantId = menuItem.restaurantId;
+      cart.code = null;
+      cart.subTotal = 0;
+      cart.taxAmount = 0;
+      cart.deliveryCharge = 0;
+      cart.discount = 0;
+      cart.totalAmount = 0;
     }
 
-    // Check if the same item with same variant and addons already exists
+    // Check if same item already exists in cart
     const existingItemIndex = cart.items.findIndex((item) => {
       if (item.menuItemId.toString() !== menuItemId) return false;
 
-      // Check variant matches
       const itemVariantId = item.variant?._id?.toString() || null;
       const newVariantId = selectedVariant._id?.toString() || null;
       if (itemVariantId !== newVariantId) return false;
 
-      // Check if addons match
       if (item.addOns.length !== validAddOns.length) return false;
 
       const itemAddOnIds = item.addOns.map((a) => a._id.toString()).sort();
@@ -91,12 +93,10 @@ export const addToCart = async (req, res) => {
     });
 
     if (existingItemIndex !== -1) {
-      // Update quantity if item already exists
       cart.items[existingItemIndex].quantity += quantity;
       cart.items[existingItemIndex].price += itemPriceBeforeTax;
       cart.items[existingItemIndex].tax += taxAmount;
     } else {
-      // Add new item if it doesn't exist
       cart.items.push({
         menuItemId,
         restaurantId: menuItem.restaurantId,
@@ -122,8 +122,8 @@ export const addToCart = async (req, res) => {
     const deliveryCharge = totalAmountBeforeTax >= 300 ? 0 : 30;
 
     let discount = 0;
-    if (cart.couponCode) {
-      const coupon = validateCoupon(cart.couponCode);
+    if (cart.code) {
+      const coupon = await couponSch.findOne({ code: cart.code });
       if (coupon) {
         if (coupon.type === "percentage") {
           discount =
@@ -137,7 +137,7 @@ export const addToCart = async (req, res) => {
           totalAmountBeforeTax + taxAmountTotal + deliveryCharge
         );
       } else {
-        cart.couponCode = null;
+        cart.code = null;
       }
     }
 
@@ -164,7 +164,6 @@ export const addToCart = async (req, res) => {
     });
   } catch (error) {
     console.error("Add to cart error:", error);
-
     res.status(500).json({
       message: "Failed to add to cart",
       error: error.message || "Unknown error",
@@ -207,8 +206,8 @@ export const fetchCartByUserId = async (req, res) => {
     const deliveryCharge = totalAmountBeforeTax >= 300 ? 0 : 30;
 
     let discount = 0;
-    if (cart.couponCode) {
-      const coupon = validateCoupon(cart.couponCode);
+    if (cart.code) {
+      const coupon = await cart.code;
       if (coupon) {
         if (coupon.type === "percentage") {
           discount =
@@ -222,7 +221,7 @@ export const fetchCartByUserId = async (req, res) => {
           totalAmountBeforeTax + taxAmount + deliveryCharge
         );
       } else {
-        cart.couponCode = null;
+        cart.code = null;
         await cart.save({ validateModifiedOnly: true });
       }
     }
@@ -319,8 +318,8 @@ export const updateCartItem = async (req, res) => {
     const deliveryCharge = totalAmountBeforeTax >= 300 ? 0 : 30;
 
     let discount = 0;
-    if (cart.couponCode) {
-      const coupon = validateCoupon(cart.couponCode);
+    if (cart.code) {
+      const coupon = await couponSch.findOne(cart.code);
       if (coupon) {
         if (coupon.type === "percentage") {
           discount =
@@ -334,7 +333,7 @@ export const updateCartItem = async (req, res) => {
           totalAmountBeforeTax + taxAmount + deliveryCharge
         );
       } else {
-        cart.couponCode = null;
+        cart.code = null;
       }
     }
 
@@ -395,8 +394,8 @@ export const deleteCartItem = async (req, res) => {
     const deliveryCharge = totalAmountBeforeTax >= 300 ? 0 : 30;
 
     let discount = 0;
-    if (updatedCart.couponCode) {
-      const coupon = validateCoupon(updatedCart.couponCode);
+    if (updatedCart.code) {
+      const coupon = await couponSch.findOne(updatedCart.code);
       if (coupon) {
         if (coupon.type === "percentage") {
           discount =
@@ -410,7 +409,7 @@ export const deleteCartItem = async (req, res) => {
           totalAmountBeforeTax + taxAmount + deliveryCharge
         );
       } else {
-        updatedCart.couponCode = null;
+        updatedCart.code = null;
         await updatedCart.save({ validateModifiedOnly: true });
       }
     }
@@ -454,7 +453,7 @@ export const deleteCartItem = async (req, res) => {
 // apply coupon
 export const applyCoupon = async (req, res) => {
   const { userId } = req.params;
-  const { couponCode } = req.body;
+  const { code } = req.body;
 
   try {
     const cart = await CartSche.findOne({ userId });
@@ -463,13 +462,14 @@ export const applyCoupon = async (req, res) => {
     }
 
     // Check if user already used a coupon for this cart/order
-    if (cart.couponCode) {
+    if (cart.code) {
       return res
         .status(400)
         .json({ message: "Coupon already apply for this order" });
     }
 
-    const coupon = validateCoupon(couponCode);
+    const couponCode = code.trim().toUpperCase();
+    const coupon = await couponSch.findOne({ code: couponCode });
     if (!coupon) {
       return res.status(400).json({ message: "Invalid coupon code" });
     }
@@ -480,9 +480,9 @@ export const applyCoupon = async (req, res) => {
     );
 
     // Apply only if total >= 500
-    if (totalAmountBeforeTax < 500) {
+    if (totalAmountBeforeTax < coupon.minOrderAmount) {
       return res.status(400).json({
-        message: "Coupon valid only for orders above ₹500",
+        message: `Coupon valid only for orders above ₹${coupon.minOrderAmount}`,
       });
     }
 
@@ -491,11 +491,13 @@ export const applyCoupon = async (req, res) => {
     const deliveryCharge = totalAmountBeforeTax >= 300 ? 0 : 30;
 
     let discount = 0;
-    if (coupon.type === "percentage") {
+    if (coupon.discountType === "percentage") {
       discount =
-        Math.round(((totalAmountBeforeTax * coupon.value) / 100) * 100) / 100;
-    } else if (coupon.type === "fixed") {
-      discount = coupon.value;
+        Math.round(totalAmountBeforeTax * coupon.discountValue * 100) /
+        100 /
+        100;
+    } else if (coupon.discountType === "flat") {
+      discount = coupon.discountValue;
     }
 
     // Ensure discount doesn’t exceed payable
@@ -510,9 +512,10 @@ export const applyCoupon = async (req, res) => {
       ) / 100;
 
     // Save coupon info in backend (once per order)
-    cart.couponCode = couponCode;
+    cart.code = coupon.code;
     cart.discount = discount;
     cart.totalAmount = totalAmount;
+    cart.couponId = coupon._id;
 
     await cart.save({ validateModifiedOnly: true });
 
