@@ -1,20 +1,7 @@
 import express from "express";
-import {
-  createRestaurant,
-  // deleteRestaurant,
-  // getAllRestaurunt,
-  RestoFindById,
-  updateRestaurant,
-  loginRestaurant,
-  getAllRestaurants,
-  approveRestaurant,
-  rejectRestaurant,
-  getnotification,
-  markAsNotified,
-} from "../Controllers/Restaurant.js";
+import {createRestaurant, RestoFindById,updateRestaurant,loginRestaurant,getAllRestaurants,approveRestaurant,rejectRestaurant,getnotification,markAsNotified,} from "../Controllers/Restaurant.js";
 import Auth from "../MiddleWare/Auth.js";
 import upload from "../MiddleWare/Multer.js";
-// import upload from "../MiddleWare/Multer.js";
 
 export const Restorant_Routes = express.Router();
 

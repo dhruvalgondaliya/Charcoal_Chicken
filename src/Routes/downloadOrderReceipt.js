@@ -14,8 +14,4 @@ const receiptLimiter = rateLimit({
 
 export const OrderReceipte_Routes = express.Router();
 
-OrderReceipte_Routes.get(
-  "/order/:orderId/downloadReceipte",
-  receiptLimiter,
-  getOrderReceipt
-);
+OrderReceipte_Routes.get("/order/:orderId/downloadReceipte",receiptLimiter,getOrderReceipt);

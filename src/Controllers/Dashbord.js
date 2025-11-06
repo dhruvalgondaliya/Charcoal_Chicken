@@ -479,11 +479,28 @@ export const getRestaurantSalesTrends = async (req, res) => {
 
     const match = {
       restaurantId: new mongoose.Types.ObjectId(restaurantId),
+      orderStatus: { $ne: "cancelled" },
     };
-    match.orderStatus = { $ne: "cancelled" };
 
-    let groupId;
-    let projectId;
+    // Date filtering logic
+    const now = new Date();
+    let startDate;
+
+    if (range === "day") {
+      // show current month's data only
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (range === "month") {
+      // show current year's data only
+      startDate = new Date(now.getFullYear(), 0, 1);
+    } else if (range === "year") {
+      // show last 5 years
+      startDate = new Date(now.getFullYear() - 5, 0, 1);
+    }
+
+    match.createdAt = { $gte: startDate, $lte: now };
+
+    // range
+    let groupId, projectId, sortKey;
 
     if (range === "month") {
       groupId = {
@@ -492,7 +509,7 @@ export const getRestaurantSalesTrends = async (req, res) => {
       };
       projectId = {
         _id: 0,
-        month: {
+        label: {
           $concat: [
             { $toString: "$_id.year" },
             "-",
@@ -505,13 +522,14 @@ export const getRestaurantSalesTrends = async (req, res) => {
             },
           ],
         },
-
         totalSales: 1,
         orders: 1,
       };
+      sortKey = { "_id.year": 1, "_id.month": 1 };
     } else if (range === "year") {
       groupId = { year: { $year: "$createdAt" } };
-      projectId = { _id: 0, year: "$_id.year", totalSales: 1, orders: 1 };
+      projectId = { _id: 0, label: "$_id.year", totalSales: 1, orders: 1 };
+      sortKey = { "_id.year": 1 };
     } else {
       // daily
       groupId = {
@@ -521,7 +539,7 @@ export const getRestaurantSalesTrends = async (req, res) => {
       };
       projectId = {
         _id: 0,
-        date: {
+        label: {
           $dateToString: {
             format: "%Y-%m-%d",
             date: {
@@ -536,6 +554,7 @@ export const getRestaurantSalesTrends = async (req, res) => {
         totalSales: 1,
         orders: 1,
       };
+      sortKey = { "_id.year": 1, "_id.month": 1, "_id.day": 1 };
     }
 
     const salesData = await OrderSche.aggregate([
@@ -553,7 +572,7 @@ export const getRestaurantSalesTrends = async (req, res) => {
           orders: { $sum: 1 },
         },
       },
-      { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
+      { $sort: sortKey },
       { $project: projectId },
     ]);
 

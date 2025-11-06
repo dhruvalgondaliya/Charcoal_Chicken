@@ -1,23 +1,5 @@
 import express from "express";
-import {
-  createMenu,
-  CreateCategory,
-  addItemToCategory,
-  updateCategory,
-  updateItemInCategory,
-  deleteCategory,
-  deleteItemCategory,
-  getAllMenus,
-  getMenuById,
-  deleteMenu,
-  updateMenu,
-  getCategoryById,
-  getMenusByRestaurant,
-  getRestaurantCategories,
-  getItemsByRestaurant,
-  getMenuNamesByRestaurant,
-  getCategoryNamesByRestaurant,
-} from "../Controllers/MainFood.js";
+import {createMenu,CreateCategory,addItemToCategory,updateCategory,updateItemInCategory,deleteCategory,deleteItemCategory,getAllMenus,getMenuById,deleteMenu,updateMenu, getCategoryById, getMenusByRestaurant, getRestaurantCategories, getItemsByRestaurant, getMenuNamesByRestaurant, getCategoryNamesByRestaurant,} from "../Controllers/MainFood.js";
 import Auth from "../MiddleWare/Auth.js";
 import upload from "../MiddleWare/Multer.js";
 
