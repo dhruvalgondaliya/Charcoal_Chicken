@@ -51,51 +51,67 @@ export const createMenu = async (req, res) => {
 // Create Category
 export const CreateCategory = async (req, res) => {
   const { menuId } = req.params;
-  let { name, description } = req.body;
+  const { name, description } = req.body;
 
   try {
+    if (!name) {
+      return res.status(400).json({ message: "Category name is required" });
+    }
+
+    // Validate menu
     const menu = await Menu.findById(menuId);
     if (!menu) {
       return res.status(404).json({ message: "Menu not found" });
     }
 
-    // Normalize name
-    name = name.trim().toLowerCase();
+    const formattedName = name.trim().toLowerCase();
 
-    // Check if a category with the same name exists under the same restaurant
-    const existingCategory = await CategorySch.findOne({
+    // Escape regex special chars
+    const escapeRegex = (str) =>
+      str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    const nameRegex = new RegExp(`^${escapeRegex(formattedName)}$`, "i");
+
+    // Check duplicate category
+    const isExists = await CategorySch.exists({
       restaurantId: menu.restaurantId,
-      name: { $regex: new RegExp(`^${name}$`, "i") },
+      name: nameRegex,
     });
 
-    if (existingCategory) {
+    if (isExists) {
       return res.status(400).json({
         message: "Category name already exists",
       });
     }
 
-    const newCategory = new CategorySch({
-      name,
+    //Handle image
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+
+    // Create category
+    const newCategory = await CategorySch.create({
+      name: formattedName,
       description,
+      imageUrl,
       menuId: menu._id,
       restaurantId: menu.restaurantId,
       items: [],
     });
 
-    await newCategory.save();
+    // Update menu
+    await Menu.findByIdAndUpdate(menu._id, {
+      $push: { categories: newCategory._id },
+    });
 
-    // Add to menu's categories
-    menu.categories.push(newCategory._id);
-    await menu.save();
-
-    res.status(201).json({
+    return res.status(201).json({
       message: "Category created successfully",
       data: newCategory,
     });
   } catch (err) {
-    res.status(500).json({
-      error: "Failed to create category",
-      message: err.message,
+    console.error("CreateCategory Error:", err);
+
+    return res.status(500).json({
+      message: "Failed to create category",
+      error: err.message,
     });
   }
 };
@@ -429,35 +445,40 @@ export const updateMenu = async (req, res) => {
 // Update Category
 export const updateCategory = async (req, res) => {
   const { menuId, categoryId } = req.params;
-  const updates = req.body;
+  const updates = { ...req.body };
 
   try {
-    // Validate menu exists
-    const menu = await Menu.findById(menuId).populate("categories");
-    if (!menu) return res.status(404).json({ message: "Menu not found" });
+    // 1️⃣ Clean invalid imageUrl
+    if (
+      updates.imageUrl &&
+      typeof updates.imageUrl === "object" &&
+      !Object.keys(updates.imageUrl).length
+    ) {
+      delete updates.imageUrl;
+    }
 
-    // Validate category belongs to this menu
-    const categoryIndex = menu.categories.findIndex(
-      (cat) => cat._id.toString() === categoryId
-    );
-    if (categoryIndex === -1)
+    // 2️⃣ Validate menu + category relation (faster check)
+    const menu = await Menu.findOne({
+      _id: menuId,
+      categories: categoryId,
+    });
+
+    if (!menu) {
       return res
         .status(404)
-        .json({ message: "Category not found in this menu" });
+        .json({ message: "Menu or Category not found" });
+    }
 
-    // Update category
+    // 3️⃣ Update category
     const updatedCategory = await CategorySch.findByIdAndUpdate(
       categoryId,
       updates,
       { new: true, runValidators: true }
     );
 
-    if (!updatedCategory)
+    if (!updatedCategory) {
       return res.status(404).json({ message: "Category not found" });
-
-    // Update the menu's categories array
-    menu.categories[categoryIndex] = updatedCategory;
-    await menu.save();
+    }
 
     res.status(200).json({
       message: "Category updated successfully",
@@ -466,7 +487,8 @@ export const updateCategory = async (req, res) => {
         menuId: { _id: menu._id, title: menu.title },
       },
     });
-  } catch (err) {
+  } catch (error) {
+    console.error("Update Category Error:", error);
     res.status(500).json({
       error: "Failed to update category",
       message: "An error occurred while updating the category",

@@ -1,71 +1,89 @@
+import mongoose from "mongoose";
 import CartSche from "../Models/Cart.js";
 import couponSch from "../Models/CouponCode.js";
 import FoodItems from "../Models/FoodItems.js";
 
-// Create Cart
+// ADD To Cart
 export const addToCart = async (req, res) => {
   const { userId, menuItemId } = req.params;
-  const { variantId, quantity, addOns } = req.body;
+  const { variantId, quantity = 1, addOns = [] } = req.body;
 
   try {
-    const menuItem = await FoodItems.findOne({ _id: menuItemId });
+    // Login validation
+    if (!userId || userId === "null") {
+      return res.status(401).json({
+        message: "Please login first to add items to your cart",
+      });
+    }
 
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid user" });
+    }
+
+    //Find menu item
+    const menuItem = await FoodItems.findById(menuItemId);
     if (!menuItem) {
       return res.status(404).json({ message: "Menu item not found" });
     }
 
-    // Validate variant
-    let selectedVariant = null;
-    if (menuItem.variants && menuItem.variants.length > 0) {
+    // Resolve variant
+    let selectedVariant = {
+      _id: null,
+      size: null,
+      price: menuItem.price,
+    };
+
+    if (menuItem.variants?.length) {
       if (!variantId) {
         return res
           .status(400)
-          .json({ message: "Variant ID is required for this item" });
+          .json({ message: "Variant is required for this item" });
       }
+
       const variant = menuItem.variants.find(
         (v) => v._id.toString() === variantId
       );
+
       if (!variant) {
         return res.status(400).json({ message: "Variant not found" });
       }
+
       selectedVariant = {
+        _id: variant._id,
         size: variant.size,
         price: variant.price,
-        _id: variant._id,
       };
-    } else {
-      selectedVariant = { size: null, price: menuItem.price, _id: null };
     }
 
-    // Calculate base price + addons
-    let basePrice = selectedVariant.price;
-    let validAddOns = [];
-    if (addOns && addOns.length > 0) {
-      validAddOns = menuItem.addOns.filter((a) =>
-        addOns.includes(a._id.toString())
-      );
-      basePrice += validAddOns.reduce((sum, a) => sum + a.price, 0);
-    }
+    // Resolve add-ons
+    const validAddOns =
+      menuItem.addOns?.filter((a) => addOns.includes(a._id.toString())) || [];
 
-    const itemPriceBeforeTax = basePrice * quantity;
-    const taxRate = 0.05;
-    const taxAmount = Math.round(itemPriceBeforeTax * taxRate * 100) / 100;
+    const addOnTotal = validAddOns.reduce((s, a) => s + a.price, 0);
 
-    // Find existing cart
+    // Price calculation
+    const unitPrice = selectedVariant.price + addOnTotal;
+    const itemPriceBeforeTax = unitPrice * quantity;
+
+    const TAX_RATE = 0.05;
+    const taxAmount = +(itemPriceBeforeTax * TAX_RATE).toFixed(2);
+
+    // Find or create cart
     let cart = await CartSche.findOne({ userId });
 
     if (!cart) {
-      // Create new cart if none exists
       cart = new CartSche({
         userId,
         restaurantId: menuItem.restaurantId,
         items: [],
       });
-    } else if (
+    }
+
+    //Reset cart if restaurant changed
+    if (
       cart.restaurantId &&
       cart.restaurantId.toString() !== menuItem.restaurantId.toString()
     ) {
-      // If cart is from another restaurant, clear it
       cart.items = [];
       cart.restaurantId = menuItem.restaurantId;
       cart.code = null;
@@ -76,26 +94,27 @@ export const addToCart = async (req, res) => {
       cart.totalAmount = 0;
     }
 
-    // Check if same item already exists in cart
-    const existingItemIndex = cart.items.findIndex((item) => {
+    // 7. Check for existing item
+    const isSameItem = (item) => {
       if (item.menuItemId.toString() !== menuItemId) return false;
 
-      const itemVariantId = item.variant?._id?.toString() || null;
-      const newVariantId = selectedVariant._id?.toString() || null;
-      if (itemVariantId !== newVariantId) return false;
+      const oldVar = item.variant?._id?.toString() || null;
+      const newVar = selectedVariant._id?.toString() || null;
+      if (oldVar !== newVar) return false;
 
-      if (item.addOns.length !== validAddOns.length) return false;
+      const oldAddOns = item.addOns.map((a) => a._id.toString()).sort();
+      const newAddOns = validAddOns.map((a) => a._id.toString()).sort();
 
-      const itemAddOnIds = item.addOns.map((a) => a._id.toString()).sort();
-      const newAddOnIds = validAddOns.map((a) => a._id.toString()).sort();
+      return JSON.stringify(oldAddOns) === JSON.stringify(newAddOns);
+    };
 
-      return JSON.stringify(itemAddOnIds) === JSON.stringify(newAddOnIds);
-    });
+    const existingIndex = cart.items.findIndex(isSameItem);
 
-    if (existingItemIndex !== -1) {
-      cart.items[existingItemIndex].quantity += quantity;
-      cart.items[existingItemIndex].price += itemPriceBeforeTax;
-      cart.items[existingItemIndex].tax += taxAmount;
+    if (existingIndex !== -1) {
+      const item = cart.items[existingIndex];
+      item.quantity += quantity;
+      item.price += itemPriceBeforeTax;
+      item.tax += taxAmount;
     } else {
       cart.items.push({
         menuItemId,
@@ -113,41 +132,38 @@ export const addToCart = async (req, res) => {
     }
 
     // Recalculate totals
-    const totalAmountBeforeTax = cart.items.reduce(
-      (sum, item) => sum + (Number(item.price) || 0),
-      0
-    );
-    const taxAmountTotal =
-      Math.round(totalAmountBeforeTax * taxRate * 100) / 100;
-    const deliveryCharge = totalAmountBeforeTax >= 300 ? 0 : 30;
+    const subTotal = cart.items.reduce((s, i) => s + Number(i.price || 0), 0);
 
+    const taxAmountTotal = +(subTotal * TAX_RATE).toFixed(2);
+    const deliveryCharge = subTotal >= 300 ? 0 : 30;
+
+    // Coupon
     let discount = 0;
     if (cart.code) {
       const coupon = await couponSch.findOne({ code: cart.code });
       if (coupon) {
-        if (coupon.type === "percentage") {
-          discount =
-            Math.round(((totalAmountBeforeTax * coupon.value) / 100) * 100) /
-            100;
-        } else if (coupon.type === "fixed") {
-          discount = coupon.value;
-        }
+        discount =
+          coupon.type === "percentage"
+            ? +(subTotal * (coupon.value / 100)).toFixed(2)
+            : coupon.value;
+
         discount = Math.min(
           discount,
-          totalAmountBeforeTax + taxAmountTotal + deliveryCharge
+          subTotal + taxAmountTotal + deliveryCharge
         );
       } else {
         cart.code = null;
       }
     }
 
-    const totalAmount =
-      Math.round(
-        (totalAmountBeforeTax + taxAmountTotal + deliveryCharge - discount) *
-          100
-      ) / 100;
+    const totalAmount = +(
+      subTotal +
+      taxAmountTotal +
+      deliveryCharge -
+      discount
+    ).toFixed(2);
 
-    cart.subTotal = totalAmountBeforeTax;
+    cart.subTotal = subTotal;
     cart.taxAmount = taxAmountTotal;
     cart.deliveryCharge = deliveryCharge;
     cart.discount = discount;
@@ -157,7 +173,7 @@ export const addToCart = async (req, res) => {
 
     res.status(200).json({
       message:
-        existingItemIndex !== -1
+        existingIndex !== -1
           ? "Item quantity updated in cart"
           : "Item added to cart successfully",
       cart,
@@ -166,7 +182,7 @@ export const addToCart = async (req, res) => {
     console.error("Add to cart error:", error);
     res.status(500).json({
       message: "Failed to add to cart",
-      error: error.message || "Unknown error",
+      error: error.message,
     });
   }
 };
@@ -175,14 +191,16 @@ export const addToCart = async (req, res) => {
 export const fetchCartByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
-
+    
     const cart = await CartSche.findOne({ userId })
+      .populate({
+        path: "items.restaurantId",
+        select: "name",
+      })
       .populate({
         path: "items.menuItemId",
         select: "name description imageUrl price variants addOns",
-      })
-      .populate("items.addOns")
-      .populate("restaurantId", "name");
+      });
 
     if (!cart || !cart.items || cart.items.length === 0) {
       return res

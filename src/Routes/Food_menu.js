@@ -25,7 +25,7 @@ export const FoodMenu_Routes = express.Router();
 
 // Create Routes
 FoodMenu_Routes.post("/:restaurantId/createMenu", Auth, createMenu);
-FoodMenu_Routes.post("/:menuId/categories", Auth, CreateCategory);
+FoodMenu_Routes.post("/:menuId/categories", Auth,upload.single("imageUrl"), CreateCategory);
 FoodMenu_Routes.post("/:menuId/categories/:categoryId/items",Auth, upload.single("imageUrl"), addItemToCategory);
 
 // Get Routes
