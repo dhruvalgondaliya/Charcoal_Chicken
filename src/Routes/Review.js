@@ -11,11 +11,7 @@ import Auth from "../MiddleWare/Auth.js";
 export const Review_Routes = express.Router();
 
 // Create Routes
-Review_Routes.post(
-  "/create/:userId/:restaurantId/:orderId",
-  Auth,
-  createReview
-);
+Review_Routes.post("/create/:userId/:restaurantId/:orderId",Auth,createReview);
 
 // Get Routes
 Review_Routes.get("/restorunt/getAllReview", getUserReview);
@@ -23,8 +19,4 @@ Review_Routes.get("/restorunt/:id", Auth, getReviewsByRestaurant);
 
 // Edit / Delete Routes
 Review_Routes.put("/:userId/restorunt/:restaurantId", Auth, EditReviewByUser);
-Review_Routes.delete(
-  "/:userId/restorunt/:restaurantId",
-  Auth,
-  deleteRestaurantReview
-);
+Review_Routes.delete("/:userId/restorunt/:restaurantId",Auth,deleteRestaurantReview);

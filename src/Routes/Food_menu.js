@@ -40,7 +40,7 @@ FoodMenu_Routes.get("/restaurants/:restaurantId/items",Auth, getItemsByRestauran
 
 // Update/Delete Routes
 FoodMenu_Routes.put("/:menuId/", Auth, updateMenu);
-FoodMenu_Routes.put("/:menuId/categories/:categoryId",Auth, updateCategory);
+FoodMenu_Routes.put("/:menuId/categories/:categoryId",Auth,upload.single("imageUrl"), updateCategory);
 FoodMenu_Routes.put("/:menuId/categories/:categoryId/items/:itemId", Auth, upload.single("imageUrl"), updateItemInCategory);
 
 FoodMenu_Routes.delete("/:menuId", Auth, deleteMenu);

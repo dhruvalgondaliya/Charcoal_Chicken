@@ -26,7 +26,13 @@ connectDB();
 
 const app = express();
 
-app.use(cors({ origin: true, credentials: true }));
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 app.use(morgan("dev"));
 app.use(helmet());
@@ -34,7 +40,7 @@ app.use(helmet());
 // Static access for uploaded files
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
+  
 // Static access for uploaded files
 app.use(
   "/uploads",

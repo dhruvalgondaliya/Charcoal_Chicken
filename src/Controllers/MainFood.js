@@ -448,51 +448,30 @@ export const updateCategory = async (req, res) => {
   const updates = { ...req.body };
 
   try {
-    // 1️⃣ Clean invalid imageUrl
-    if (
-      updates.imageUrl &&
-      typeof updates.imageUrl === "object" &&
-      !Object.keys(updates.imageUrl).length
-    ) {
-      delete updates.imageUrl;
+    // check menu + category relation
+    const menu = await Menu.findOne({ _id: menuId, categories: categoryId });
+    if (!menu) return res.status(404).json({ message: "Menu or Category not found" });
+
+    if (req.file) {
+      updates.imageUrl = `/uploads/${req.file.filename}`;
+    } else {
+      delete updates.imageUrl; 
     }
 
-    // 2️⃣ Validate menu + category relation (faster check)
-    const menu = await Menu.findOne({
-      _id: menuId,
-      categories: categoryId,
+    const updatedCategory = await CategorySch.findByIdAndUpdate(categoryId, updates, {
+      new: true,
+      runValidators: true,
     });
 
-    if (!menu) {
-      return res
-        .status(404)
-        .json({ message: "Menu or Category not found" });
-    }
-
-    // 3️⃣ Update category
-    const updatedCategory = await CategorySch.findByIdAndUpdate(
-      categoryId,
-      updates,
-      { new: true, runValidators: true }
-    );
-
-    if (!updatedCategory) {
-      return res.status(404).json({ message: "Category not found" });
-    }
+    if (!updatedCategory) return res.status(404).json({ message: "Category not found" });
 
     res.status(200).json({
       message: "Category updated successfully",
-      data: {
-        ...updatedCategory.toObject(),
-        menuId: { _id: menu._id, title: menu.title },
-      },
+      data: updatedCategory,
     });
   } catch (error) {
     console.error("Update Category Error:", error);
-    res.status(500).json({
-      error: "Failed to update category",
-      message: "An error occurred while updating the category",
-    });
+    res.status(500).json({ message: "Update failed" });
   }
 };
 

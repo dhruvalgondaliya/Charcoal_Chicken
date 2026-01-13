@@ -1,12 +1,6 @@
 import express from "express";
 import Auth from "../MiddleWare/Auth.js";
-import {
-  addToCart,
-  updateCartItem,
-  fetchCartByUserId,
-  deleteCartItem,
-  applyCoupon,
-} from "../Controllers/Cart.js";
+import {addToCart, updateCartItem, fetchCartByUserId, deleteCartItem, applyCoupon, } from "../Controllers/Cart.js";
 
 export const Cart_Routes = express.Router();
 

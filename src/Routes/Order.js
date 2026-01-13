@@ -1,12 +1,5 @@
 import express from "express";
-import {
-  cancelUserOrder,
-  createOrder,
-  getAllOrder,
-  getRestaurantOrders,
-  getUserByIdOrder,
-  updateOrderAndPaymentStatus,
-} from "../Controllers/Order.js";
+import {cancelUserOrder,createOrder,getAllOrder,getRestaurantOrders,getUserByIdOrder,updateOrderAndPaymentStatus,} from "../Controllers/Order.js";
 import Auth from "../MiddleWare/Auth.js";
 
 export const Order_Routes = express.Router();
